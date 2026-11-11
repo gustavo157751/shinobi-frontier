@@ -15,13 +15,37 @@ enum ShinobiPath {
   STONE_FIST
 }
 
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  characters   Character[]
+  id              String              @id @default(cuid())
+  email           String              @unique @db.VarChar(254)
+  passwordHash    String              @db.VarChar(255)
+  status          AccountStatus       @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  characters      Character[]
+  auditEvents     AccountAuditEvent[]
+
+  @@index([status, createdAt])
+}
+
+model AccountAuditEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  event     String   @db.VarChar(64)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
 }
 
 model Character {

@@ -37,3 +37,10 @@ Rotas autenticadas do combate (enviar `Authorization: Bearer <token>`):
 4. Arena PvP, guildas, eventos, economia, anti-cheat, observabilidade, backups, testes e deploy escalável.
 
 Nunca confiar ao cliente cálculo de dano, resultado de combate, moedas ou recompensas. Troque os segredos locais antes de qualquer ambiente compartilhado; não publique `.env`. Personagens, arte, textos e código devem ser originais, sem copiar assets ou conteúdo protegido de terceiros.
+
+## Contas e dados
+- O e-mail é o identificador de login, normalizado com espaços removidos e letras minúsculas; o nome do personagem continua sendo um dado de jogo independente.
+- Senhas são armazenadas somente como hash bcrypt. As respostas de autenticação retornam apenas os campos públicos da conta, nunca o e-mail ou hash.
+- `SUSPENDED` e `DELETED` impedem autenticação. A remoção de conta deve ser lógica (`status = DELETED`, `deletedAt` preenchido) para preservar relações de jogo e auditoria; não há endpoint de suspensão/exclusão nesta fatia.
+- A verificação de e-mail fica pendente (`emailVerifiedAt = null`) até existir um fluxo de envio e confirmação. Eventos `REGISTERED` e `LOGIN_SUCCEEDED` formam uma trilha mínima sem armazenar credenciais.
+- A migração `20261111000000_initial_accounts_gameplay` cria o schema completo em um banco vazio. Se um ambiente já tiver tabelas criadas por `db push`, faça o baseline da migração antes de aplicar; não execute essa migração inicial diretamente sobre tabelas existentes.
