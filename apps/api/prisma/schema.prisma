@@ -43,6 +43,7 @@ model Character {
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   roster       CharacterNinja[]
   missions     CharacterMission[]
+  battles      CombatBattle[]
 
   @@index([userId])
 }
@@ -80,4 +81,16 @@ model CharacterMission {
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, missionCode])
+}
+
+model CombatBattle {
+  id          String    @id @default(cuid())
+  characterId String
+  status      String    @default("ACTIVE")
+  state       Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, status])
 }
