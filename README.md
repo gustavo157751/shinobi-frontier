@@ -23,13 +23,17 @@ Node.js 20+, npm 10+ e Docker.
 8. Acesse http://localhost:5173 (API: http://localhost:3000/api/health).
 
 ## Incluído
-Monorepo, schema inicial para contas/personagens/ninjas/equipe/missões, registro/login JWT com hash bcrypt, endpoint de saúde, gateway Socket.IO autenticado e interface inicial de criação de conta/perfil.
+Monorepo, schema inicial para contas/personagens/ninjas/equipe/missões, registro/login JWT com hash bcrypt, endpoint de saúde e gateway Socket.IO autenticado. A primeira fatia jogável inclui um confronto PvE original por turnos: o servidor valida ações, calcula dano e recompensas e persiste o estado do combate e a progressão do personagem no PostgreSQL. A interface oferece golpe, técnica e defesa, com barras de vitalidade/chakra e relato do confronto.
+
+Rotas autenticadas do combate (enviar `Authorization: Bearer <token>`):
+- `GET /api/combat/current` — consulta o confronto ativo.
+- `POST /api/combat/start` — inicia o treino e consome 10 pontos de energia.
+- `POST /api/combat/action` — envia `{ "action": "strike" | "technique" | "guard" }`.
 
 ## Próximas entregas
-1. Criar personagem e selecionar caminho/classe com validação server-side.
-2. Implementar combate por turnos determinístico e autoritativo.
-3. Recrutamento, equipe, inventário, missões e recompensas persistentes.
-4. Mundo compartilhado, presença, chat e matchmaking.
-5. Arena PvP, guildas, eventos, economia, anti-cheat, observabilidade, backups, testes e deploy escalável.
+1. Recrutamento, equipe, inventário e missões com recompensas persistentes.
+2. Expandir técnicas, inimigos e encontros com balanceamento e conteúdo original.
+3. Mundo compartilhado, presença, chat e matchmaking.
+4. Arena PvP, guildas, eventos, economia, anti-cheat, observabilidade, backups, testes e deploy escalável.
 
 Nunca confiar ao cliente cálculo de dano, resultado de combate, moedas ou recompensas. Troque os segredos locais antes de qualquer ambiente compartilhado; não publique `.env`. Personagens, arte, textos e código devem ser originais, sem copiar assets ou conteúdo protegido de terceiros.
