@@ -10,7 +10,7 @@ Primeira fundação executável de um MMORPG de navegador com identidade origina
 - Infra local: Docker Compose
 
 ## Requisitos
-Node.js 20+, npm 10+ e Docker.
+Node.js 22+, npm 10+ e Docker.
 
 ## Rodar localmente
 1. Copie `.env.example` para `.env` e substitua `JWT_SECRET` por um segredo aleatório com ao menos 32 caracteres.

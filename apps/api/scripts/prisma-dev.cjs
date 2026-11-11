@@ -41,6 +41,24 @@ function configureDatabaseUrl() {
   console.warn('DATABASE_URL não definida; usando o PostgreSQL local do .env.example. Inicie-o com docker compose up -d.');
 }
 
+function findPrismaCli() {
+  const packageFiles = [
+    path.join(repositoryRoot, 'apps', 'api', 'node_modules', 'prisma', 'package.json'),
+    path.join(repositoryRoot, 'node_modules', 'prisma', 'package.json'),
+  ];
+
+  for (const packageFile of packageFiles) {
+    if (!fs.existsSync(packageFile)) continue;
+    const metadata = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+    const entry = typeof metadata.bin === 'string' ? metadata.bin : metadata.bin?.prisma;
+    if (!entry) continue;
+
+    const cliPath = path.resolve(path.dirname(packageFile), entry);
+    if (fs.existsSync(cliPath)) return cliPath;
+  }
+  return undefined;
+}
+
 function main() {
   try {
     configureDatabaseUrl();
@@ -52,8 +70,13 @@ function main() {
 
   let prismaCli;
   try {
-    prismaCli = require.resolve('prisma');
+    prismaCli = findPrismaCli();
   } catch {
+    console.error('Não foi possível localizar o executável do Prisma. Execute npm ci na raiz do repositório.');
+    process.exitCode = 1;
+    return;
+  }
+  if (!prismaCli) {
     console.error('Prisma CLI não encontrado. Execute npm ci na raiz do repositório.');
     process.exitCode = 1;
     return;
@@ -74,4 +97,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { configureDatabaseUrl, readDatabaseUrl };
+module.exports = { configureDatabaseUrl, findPrismaCli, readDatabaseUrl };
