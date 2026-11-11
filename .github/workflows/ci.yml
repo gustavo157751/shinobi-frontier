@@ -18,6 +18,25 @@ jobs:
   build-and-test:
     name: Build e testes
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://shinobi:shinobi_ci_password@localhost:5432/shinobi_frontier?schema=public
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      WEB_ORIGIN: http://localhost:5173
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: shinobi
+          POSTGRES_PASSWORD: shinobi_ci_password
+          POSTGRES_DB: shinobi_frontier
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shinobi -d shinobi_frontier"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -31,6 +50,8 @@ jobs:
         run: npm ci
       - name: Gerar cliente Prisma
         run: npm run prisma:generate --workspace @shinobi/api
+      - name: Aplicar migrações no PostgreSQL de teste
+        run: npm run prisma:migrate:deploy --workspace @shinobi/api
       - name: Compilar aplicações
         run: npm run build
       - name: Executar testes disponíveis

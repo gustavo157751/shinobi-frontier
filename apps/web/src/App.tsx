@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Backpack, Heart, ScrollText, Shield, Swords, Users, Wind, Zap } from 'lucide-react';
 
 const paths = [
@@ -22,14 +22,12 @@ type BattleState = {
 type Battle = { id: string; status: 'ACTIVE' | 'VICTORY' | 'DEFEAT'; state: BattleState };
 type CombatResponse = { battle: Battle | null; character?: Character; reward?: { experience: number; gold: number } | null; message?: string | string[] };
 
-const api = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const api = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : '/api');
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('sf_token') || '');
-  const [character, setCharacter] = useState<Character | null>(() => {
-    const saved = localStorage.getItem('sf_character');
-    return saved ? JSON.parse(saved) as Character : null;
-  });
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [character, setCharacter] = useState<Character | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -40,37 +38,71 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    localStorage.removeItem('sf_token');
+    localStorage.removeItem('sf_character');
+    let cancelled = false;
+
+    fetch(api + '/auth/me', { credentials: 'include' })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json() as { character: Character | null };
+        if (!cancelled) {
+          setCharacter(data.character);
+          setAuthenticated(Boolean(data.character));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMessage('Não foi possível alcançar a API. Confira se o servidor está online e se VITE_API_URL está correto.');
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setMessage('Conectando...');
     try {
       const response = await fetch(api + '/auth/' + mode, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(mode === 'register' ? { email, password, characterName: name, path } : { email, password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'Falha na autenticação.');
-      saveSession(data.accessToken, data.character);
+      saveSession(data.character);
+      setPassword('');
       setMessage('');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Erro de conexão.');
+      setMessage(error instanceof TypeError
+        ? 'Não foi possível alcançar a API. Confira se o servidor está online e se VITE_API_URL está correto.'
+        : error instanceof Error ? error.message : 'Erro de conexão.');
     }
   }
 
-  function saveSession(accessToken: string, nextCharacter: Character) {
-    localStorage.setItem('sf_token', accessToken);
-    localStorage.setItem('sf_character', JSON.stringify(nextCharacter));
-    setToken(accessToken);
+  function saveSession(nextCharacter: Character) {
+    setAuthenticated(true);
     setCharacter(nextCharacter);
   }
 
-  function logout() {
-    localStorage.removeItem('sf_token');
-    localStorage.removeItem('sf_character');
-    setToken('');
-    setCharacter(null);
-    setBattle(null);
-    setView('village');
+  async function logout() {
+    try {
+      await fetch(api + '/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch {
+      // Clear the local view even if the API is temporarily unreachable.
+    } finally {
+      setAuthenticated(false);
+      setMessage('');
+      setPassword('');
+      setEmail('');
+      setName('');
+      setBattle(null);
+      setCharacter(null);
+      setView('village');
+    }
   }
 
   async function combatRequest(pathname: string, body?: object) {
@@ -79,16 +111,25 @@ export default function App() {
     try {
       const response = await fetch(api + pathname, {
         method: body ? 'POST' : 'GET',
-        headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        credentials: 'include',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
       const data = await response.json() as CombatResponse;
-      if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'Não foi possível atualizar o confronto.');
+      if (!response.ok) {
+        if (response.status === 401) {
+          setAuthenticated(false);
+          setCharacter(null);
+        }
+        throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'Não foi possível atualizar o confronto.');
+      }
       setBattle(data.battle);
-      if (data.character && character) saveSession(token, data.character);
+      if (data.character) saveSession(data.character);
       return data;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Erro de conexão com o servidor.');
+      setMessage(error instanceof TypeError
+        ? 'Não foi possível alcançar a API. Confira se o servidor está online e se VITE_API_URL está correto.'
+        : error instanceof Error ? error.message : 'Erro de conexão com o servidor.');
       return null;
     } finally {
       setBusy(false);
@@ -102,11 +143,13 @@ export default function App() {
 
   const className = paths.find((item) => item[0] === character?.path)?.[1] || 'Shinobi';
 
-  if (!token || !character) {
-    return <main className="auth"><section className="art"><div className="seal">SF</div><small>UM NOVO MUNDO SHINOBI</small><h1>Forje seu<br/><em>destino.</em></h1><p>Reúna aliados. Domine técnicas. Escreva sua lenda.</p><b className="kanji">忍</b></section><section className="formside"><small>SHINOBI FRONTIER · SERVIDOR LOCAL</small><h2>{mode === 'register' ? 'Crie sua jornada' : 'Bem-vindo de volta'}</h2><p className="muted">Acesse o mundo e comece sua evolução.</p><form onSubmit={submit}><label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required/></label><label>Senha<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required placeholder="Mínimo de 10 caracteres"/></label>{mode === 'register' && <><label>Nome do personagem<input value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={18} required/></label><label>Caminho shinobi<select value={path} onChange={(event) => setPath(event.target.value)}>{paths.map((item) => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label></>}<button>{mode === 'register' ? 'CRIAR CONTA' : 'ENTRAR NO MUNDO'}</button></form>{message && <p className="message">{message}</p>}<p className="switch">{mode === 'register' ? 'Já possui conta?' : 'Novo por aqui?'} <a onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? 'Entrar' : 'Criar conta'}</a></p><small className="foot">Uma aventura original · Shinobi Frontier</small></section></main>;
+  if (authChecking) return <main className="auth"><section className="formside"><small>SHINOBI FRONTIER</small><h2>Conectando ao mundo</h2><p className="muted">Verificando a sessão e carregando seu personagem...</p></section></main>;
+
+  if (!authenticated || !character) {
+    return <main className="auth"><section className="art"><div className="seal">SF</div><small>UM NOVO MUNDO SHINOBI</small><h1>Forje seu<br/><em>destino.</em></h1><p>Reúna aliados. Domine técnicas. Escreva sua lenda.</p><b className="kanji">忍</b></section><section className="formside"><small>SHINOBI FRONTIER · API DO JOGO</small><h2>{mode === 'register' ? 'Crie sua jornada' : 'Bem-vindo de volta'}</h2><p className="muted">Acesse o mundo e comece sua evolução.</p><form onSubmit={submit}><label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email"/></label><label>Senha<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="Mínimo de 10 caracteres"/></label>{mode === 'register' && <><label>Nome do personagem<input value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={18} required autoComplete="nickname"/></label><label>Caminho shinobi<select value={path} onChange={(event) => setPath(event.target.value)}>{paths.map((item) => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label></>}<button>{mode === 'register' ? 'CRIAR CONTA' : 'ENTRAR NO MUNDO'}</button></form>{message && <p className="message">{message}</p>}<p className="switch">{mode === 'register' ? 'Já possui conta?' : 'Novo por aqui?'} <a onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? 'Entrar' : 'Criar conta'}</a></p><small className="foot">Uma aventura original · Shinobi Frontier</small></section></main>;
   }
 
-  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span>● SERVIDOR LOCAL <button onClick={logout}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className="nav-link" onClick={() => setMessage('As missões entram na próxima etapa da jornada.')}><ScrollText/> Missões</button><button className="nav-link" onClick={() => setMessage('A equipe poderá ser formada após o primeiro capítulo.')}><Users/> Equipe</button><button className="nav-link" onClick={() => setMessage('O inventário será conectado à progressão em uma próxima etapa.')}><Backpack/> Inventário</button><footer>CAPÍTULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
+  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span>● MUNDO ONLINE <button onClick={() => void logout()}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className="nav-link" onClick={() => setMessage('As missões entram na próxima etapa da jornada.')}><ScrollText/> Missões</button><button className="nav-link" onClick={() => setMessage('A equipe poderá ser formada após o primeiro capítulo.')}><Users/> Equipe</button><button className="nav-link" onClick={() => setMessage('O inventário será conectado à progressão em uma próxima etapa.')}><Backpack/> Inventário</button><footer>CAPÍTULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
     {view === 'village' ? <><small>VILA CENTRAL · REGIÃO DA SERRA</small><h1>Bem-vindo, {character.name}</h1><p className="muted">Seu caminho começa agora, shinobi.</p><section className="banner"><small>SUA JORNADA</small><h2>Uma trilha desconhecida<br/>se abre diante de você.</h2><p>Treine, descubra sua afinidade e enfrente os perigos do vale.</p><button onClick={openCombat}>INICIAR TREINO</button><b>忍</b></section><div className="cards"><section className="card"><small>PERFIL SHINOBI</small><h2>{character.name}</h2><p>{className} · Nível {character.level}</p><div className="stats"><span><Swords/>{character.strength}<small>FORÇA</small></span><span><Heart/>{character.vitality}<small>VITALIDADE</small></span><span><Wind/>{character.agility}<small>AGILIDADE</small></span><span><Zap/>{character.intelligence}<small>INTELIGÊNCIA</small></span></div></section><section className="card"><small>RECURSOS</small><p>Energia <b>{character.energy}/100</b></p><p>Ryō <b>{character.gold}</b></p><p>Caminho <b>{className}</b></p><aside>Seu personagem e sua progressão são salvos no servidor.</aside></section></div></> : <CombatView battle={battle} busy={busy} message={message} onStart={() => void combatRequest('/combat/start', {})} onAction={(action) => void combatRequest('/combat/action', { action })}/ >}
     </main></div></div>;
 }
