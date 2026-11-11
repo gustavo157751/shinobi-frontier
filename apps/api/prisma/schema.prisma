@@ -1,0 +1,62 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+enum ShinobiPath { SHADOW_BLADE FLAME_EYE WIND_DANCER WATER_CLAW STONE_FIST }
+model User {
+ id String @id @default(cuid())
+ email String @unique
+ passwordHash String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ characters Character[]
+}
+model Character {
+ id String @id @default(cuid())
+ name String @unique
+ level Int @default(1)
+ experience Int @default(0)
+ energy Int @default(100)
+ path ShinobiPath
+ gold Int @default(0)
+ premium Int @default(0)
+ strength Int @default(10)
+ vitality Int @default(10)
+ agility Int @default(10)
+ intelligence Int @default(10)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ userId String
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ roster CharacterNinja[]
+ missions CharacterMission[]
+ @@index([userId])
+}
+model Ninja {
+ id String @id @default(cuid())
+ code String @unique
+ name String
+ rarity Int
+ role String
+ description String
+ owners CharacterNinja[]
+}
+model CharacterNinja {
+ id String @id @default(cuid())
+ characterId String
+ ninjaId String
+ level Int @default(1)
+ stars Int @default(1)
+ position Int?
+ character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+ ninja Ninja @relation(fields: [ninjaId], references: [id])
+ @@unique([characterId, ninjaId])
+}
+model CharacterMission {
+ id String @id @default(cuid())
+ characterId String
+ missionCode String
+ status String @default("AVAILABLE")
+ progress Int @default(0)
+ updatedAt DateTime @updatedAt
+ character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+ @@unique([characterId, missionCode])
+}
