@@ -3,15 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start:dev": "nest start --watch",
-    "prestart:dev": "npm run prisma:generate",
+    "start:dev": "npm run prisma:generate && npm run prisma:migrate:deploy && nest start --watch",
     "start:prod": "node dist/main.js",
     "build": "nest build",
     "prebuild": "npm run prisma:generate",
     "test": "node --test test/*.test.cjs",
     "prisma:generate": "node scripts/prisma-dev.cjs generate --schema prisma/schema.prisma",
     "prisma:migrate": "node scripts/prisma-dev.cjs migrate dev --schema prisma/schema.prisma --name init",
-    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma"
+    "prisma:migrate:deploy": "node scripts/prisma-dev.cjs migrate deploy --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^12.4.2",

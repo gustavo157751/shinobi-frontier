@@ -17,12 +17,12 @@ Node.js 20+, npm 10+ e Docker.
 2. `docker compose up -d`
 3. `npm ci`
 4. `npm run prisma:generate --workspace @shinobi/api`
-5. `npm run prisma:migrate --workspace @shinobi/api`
+5. `npm run prisma:migrate:deploy --workspace @shinobi/api`
 6. Terminal 1: `npm run dev:api`
 7. Terminal 2: `npm run dev:web`
 8. Acesse http://localhost:5173. A API usa `http://localhost:3000/api`; `/api/health` confirma também a conexão com PostgreSQL.
 
-O comando `prisma:migrate` lê `DATABASE_URL` do ambiente ou do `.env` na raiz. Em desenvolvimento local, se essa variável não estiver definida, usa a URL local do `.env.example` e avisa que o PostgreSQL do Docker Compose precisa estar ativo. `prisma:migrate:deploy` não usa esse fallback e exige a URL do banco de destino.
+Os comandos Prisma leem `DATABASE_URL` do ambiente ou do `.env` na raiz. Em desenvolvimento local, se essa variável não estiver definida, usam a URL local do `.env.example` e avisam que o PostgreSQL do Docker Compose precisa estar ativo. `npm run dev:api` gera o Prisma Client e aplica as migrações versionadas antes de iniciar o NestJS. `prisma:migrate` é para criar migrações durante desenvolvimento; `prisma:migrate:deploy` aplica migrações existentes e exige URL explícita em produção.
 
 ## Incluído
 Monorepo, schema inicial para contas/personagens/ninjas/equipe/missões, registro/login JWT com hash bcrypt, endpoint de saúde e gateway Socket.IO autenticado. A primeira fatia jogável inclui um confronto PvE original por turnos: o servidor valida ações, calcula dano e recompensas e persiste o estado do combate e a progressão do personagem no PostgreSQL. A interface oferece golpe, técnica e defesa, com barras de vitalidade/chakra e relato do confronto.
