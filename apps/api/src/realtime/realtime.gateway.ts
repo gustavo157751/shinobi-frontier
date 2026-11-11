@@ -2,13 +2,15 @@ import { Logger } from '@nestjs/common';
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
-@WebSocketGateway({namespace:'/game',cors:{origin:process.env.WEB_ORIGIN??'http://localhost:5173'}})
+import { readSessionCookie } from '../auth/account.util';
+
+@WebSocketGateway({namespace:'/game',cors:{origin:process.env.WEB_ORIGIN??'http://localhost:5173',credentials:true}})
 export class RealtimeGateway implements OnGatewayConnection,OnGatewayDisconnect {
  @WebSocketServer() server:Server;
  private logger=new Logger(RealtimeGateway.name);
  constructor(private jwt:JwtService){}
  handleConnection(client:Socket){
-  try { const token=client.handshake.auth?.token; if(!token) throw new Error('missing token');
+  try { const token=readSessionCookie(client.handshake.headers.cookie); if(!token) throw new Error('missing session cookie');
    const payload=this.jwt.verify(token); client.data.userId=payload.sub; client.emit('session:ready',{userId:payload.sub});
   } catch { client.disconnect(true); }
  }

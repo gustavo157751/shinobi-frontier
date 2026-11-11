@@ -96,6 +96,30 @@ export class AuthService {
     };
   }
 
+  async current(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        status: true,
+        emailVerifiedAt: true,
+        lastLoginAt: true,
+        createdAt: true,
+        deletedAt: true,
+        characters: { take: 1 },
+      },
+    });
+
+    if (!user || user.status !== AccountStatus.ACTIVE || user.deletedAt) {
+      throw new UnauthorizedException('Sua conta não está disponível.');
+    }
+
+    return {
+      user: toPublicAccount(user),
+      character: user.characters[0] ?? null,
+    };
+  }
+
   private issue(user: {
     id: string;
     status: AccountStatus;

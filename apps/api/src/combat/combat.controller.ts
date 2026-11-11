@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { CombatActionDto } from './combat.dto';
 import { CombatService } from './combat.service';
-import { AuthenticatedRequest, JwtAuthGuard } from './jwt-auth.guard';
+import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { TrustedFrontendGuard } from '../auth/trusted-frontend.guard';
 
 @Controller('combat')
-@UseGuards(JwtAuthGuard)
+@UseGuards(TrustedFrontendGuard, JwtAuthGuard)
 export class CombatController {
   constructor(private readonly combat: CombatService) {}
 

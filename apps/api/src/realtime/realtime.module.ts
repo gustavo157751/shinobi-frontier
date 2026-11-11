@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from '../auth/auth.module';
 import { RealtimeGateway } from './realtime.gateway';
-@Module({imports:[JwtModule.register({secret:process.env.JWT_SECRET??'local-only-change-me'})],providers:[RealtimeGateway]})
+@Module({imports:[AuthModule],providers:[RealtimeGateway]})
 export class RealtimeModule {}
