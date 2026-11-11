@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shinobi
+      POSTGRES_PASSWORD: shinobi_dev_password
+      POSTGRES_DB: shinobi_frontier
+    ports: ["5432:5432"]
+    volumes: [shinobi_pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes: [shinobi_redisdata:/data]
+volumes:
+  shinobi_pgdata:
+  shinobi_redisdata:
