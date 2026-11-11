@@ -9,8 +9,8 @@
     "build": "nest build",
     "prebuild": "npm run prisma:generate",
     "test": "node --test test/*.test.cjs",
-    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma --name init",
+    "prisma:generate": "node scripts/prisma-dev.cjs generate --schema prisma/schema.prisma",
+    "prisma:migrate": "node scripts/prisma-dev.cjs migrate dev --schema prisma/schema.prisma --name init",
     "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma"
   },
   "dependencies": {

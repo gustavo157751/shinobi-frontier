@@ -22,6 +22,8 @@ Node.js 20+, npm 10+ e Docker.
 7. Terminal 2: `npm run dev:web`
 8. Acesse http://localhost:5173. A API usa `http://localhost:3000/api`; `/api/health` confirma também a conexão com PostgreSQL.
 
+O comando `prisma:migrate` lê `DATABASE_URL` do ambiente ou do `.env` na raiz. Em desenvolvimento local, se essa variável não estiver definida, usa a URL local do `.env.example` e avisa que o PostgreSQL do Docker Compose precisa estar ativo. `prisma:migrate:deploy` não usa esse fallback e exige a URL do banco de destino.
+
 ## Incluído
 Monorepo, schema inicial para contas/personagens/ninjas/equipe/missões, registro/login JWT com hash bcrypt, endpoint de saúde e gateway Socket.IO autenticado. A primeira fatia jogável inclui um confronto PvE original por turnos: o servidor valida ações, calcula dano e recompensas e persiste o estado do combate e a progressão do personagem no PostgreSQL. A interface oferece golpe, técnica e defesa, com barras de vitalidade/chakra e relato do confronto.
 
