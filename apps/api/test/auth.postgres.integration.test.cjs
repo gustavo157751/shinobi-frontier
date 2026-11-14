@@ -5,6 +5,25 @@ const databaseAvailable = Boolean(process.env.DATABASE_URL);
 let app;
 let baseUrl;
 
+/** Resolve com o nome do primeiro evento disparado entre os informados. */
+function waitForAny(socket, events, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const handlers = events.map((event) => {
+      const handler = (payload) => { cleanup(); resolve({ event, payload }); };
+      socket.on(event, handler);
+      return [event, handler];
+    });
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`timeout esperando ${events.join(' ou ')}`));
+    }, timeoutMs);
+    function cleanup() {
+      clearTimeout(timer);
+      for (const [event, handler] of handlers) socket.off(event, handler);
+    }
+  });
+}
+
 before(async () => {
   if (!databaseAvailable) return;
   const { NestFactory } = require('@nestjs/core');
@@ -31,7 +50,10 @@ test('PostgreSQL registration, login, cookie session, protected game route and l
 }, async () => {
   const health = await fetch(`${baseUrl}/health`);
   assert.equal(health.status, 200);
-  assert.equal((await health.json()).database, 'connected');
+  const healthBody = await health.json();
+  assert.equal(healthBody.database, 'connected');
+  // Redis é opcional: o ambiente de CI pode rodá-lo ou degradar para memória local.
+  assert.ok(['connected', 'disabled', 'unavailable'].includes(healthBody.redis));
 
   const origin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-10);
@@ -128,4 +150,171 @@ test('PostgreSQL registration, login, cookie session, protected game route and l
     body: '{}',
   });
   assert.equal(rejectedOrigin.status, 403);
+
+  const { io } = require('socket.io-client');
+  const socketUrl = `${baseUrl.replace(/\/api$/, '')}/game`;
+  const socket = io(socketUrl, {
+    transports: ['websocket'],
+    reconnection: false,
+    extraHeaders: { Cookie: loginCookie.split(';')[0] },
+  });
+  try {
+    const presencePromise = waitForAny(socket, ['world:presence']);
+    const ready = await waitForAny(socket, ['session:ready']);
+    assert.equal(ready.payload.userId, registration.user.id);
+    assert.ok(ready.payload.online >= 1);
+
+    const presence = (await presencePromise).payload;
+    assert.ok(presence.online >= 1);
+    assert.ok(['redis', 'memory'].includes(presence.store));
+  } finally {
+    socket.close();
+  }
+
+  const anonymous = io(socketUrl, { transports: ['websocket'], reconnection: false });
+  try {
+    let sessionReady = false;
+    anonymous.on('session:ready', () => { sessionReady = true; });
+    await waitForAny(anonymous, ['disconnect', 'connect_error']);
+    assert.equal(sessionReady, false, 'sem cookie de sessão o gateway deve recusar a conexão');
+  } finally {
+    anonymous.close();
+  }
+});
+
+test('roster recruitment, formation and team bonus frozen into combat', {
+  skip: !databaseAvailable,
+}, async () => {
+  const origin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+  const suffix = `r${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-10);
+  const email = `roster-${suffix}@example.com`;
+  const characterName = `Roster${suffix}`;
+  const password = 'test-password-strong';
+
+  const register = await fetch(`${baseUrl}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ email, password, characterName, path: 'STONE_FIST' }),
+  });
+  assert.equal(register.status, 201);
+  const registration = await register.json();
+  const cookie = register.headers.get('set-cookie').split(';')[0];
+  const json = { 'Content-Type': 'application/json', Origin: origin, Cookie: cookie };
+
+  const { PrismaService } = require('../dist/prisma/prisma.service');
+  const prisma = app.get(PrismaService);
+  // O catálogo original exige ryō; a conta de teste começa sem saldo.
+  await prisma.character.update({ where: { name: characterName }, data: { gold: 1000 } });
+
+  const empty = await fetch(`${baseUrl}/roster`, { headers: { Cookie: cookie } });
+  assert.equal(empty.status, 200);
+  const emptyBody = await empty.json();
+  assert.equal(emptyBody.slots.length, 4);
+  assert.equal(emptyBody.roster.length, 0);
+  assert.equal(emptyBody.power, 0);
+  assert.ok(emptyBody.catalog.length >= 8);
+
+  const catalog = await fetch(`${baseUrl}/roster/catalog`, { headers: { Cookie: cookie } });
+  assert.equal(catalog.status, 200);
+  const catalogBody = await catalog.json();
+  assert.equal(catalogBody.ninjas.length, emptyBody.catalog.length);
+
+  const recruitVanguard = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST', headers: json, body: JSON.stringify({ ninjaCode: 'STONE_WARDEN' }),
+  });
+  assert.equal(recruitVanguard.status, 201);
+  assert.equal((await recruitVanguard.json()).character.gold, 850);
+
+  const recruitStriker = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST', headers: json, body: JSON.stringify({ ninjaCode: 'MIST_LANCER' }),
+  });
+  assert.equal(recruitStriker.status, 201);
+  assert.equal((await recruitStriker.json()).character.gold, 700);
+
+  const duplicate = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST', headers: json, body: JSON.stringify({ ninjaCode: 'MIST_LANCER' }),
+  });
+  assert.equal(duplicate.status, 409);
+
+  const locked = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST', headers: json, body: JSON.stringify({ ninjaCode: 'DAWN_BLADE' }),
+  });
+  assert.equal(locked.status, 400);
+
+  const unknown = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST', headers: json, body: JSON.stringify({ ninjaCode: 'NOT_A_NINJA' }),
+  });
+  assert.equal(unknown.status, 400);
+
+  const takenOrigin = await fetch(`${baseUrl}/roster/recruit`, {
+    method: 'POST',
+    headers: { ...json, Origin: 'https://attacker.example' },
+    body: JSON.stringify({ ninjaCode: 'MIST_LANCER' }),
+  });
+  assert.equal(takenOrigin.status, 403);
+
+  const duplicatePosition = await fetch(`${baseUrl}/roster/formation`, {
+    method: 'PUT', headers: json,
+    body: JSON.stringify({ slots: [
+      { ninjaCode: 'STONE_WARDEN', position: 1 },
+      { ninjaCode: 'MIST_LANCER', position: 1 },
+    ] }),
+  });
+  assert.equal(duplicatePosition.status, 400);
+
+  const notOwned = await fetch(`${baseUrl}/roster/formation`, {
+    method: 'PUT', headers: json,
+    body: JSON.stringify({ slots: [{ ninjaCode: 'DAWN_BLADE', position: 1 }] }),
+  });
+  assert.equal(notOwned.status, 400);
+
+  const formation = await fetch(`${baseUrl}/roster/formation`, {
+    method: 'PUT', headers: json,
+    body: JSON.stringify({ slots: [
+      { ninjaCode: 'STONE_WARDEN', position: 1 },
+      { ninjaCode: 'MIST_LANCER', position: 3 },
+    ] }),
+  });
+  assert.equal(formation.status, 200);
+  const formed = await formation.json();
+  assert.equal(formed.slots[0].ninja.code, 'STONE_WARDEN');
+  assert.equal(formed.slots[2].ninja.code, 'MIST_LANCER');
+  assert.ok(formed.power > 0);
+  assert.equal(formed.bonus.maxHp, 76);
+  assert.equal(formed.bonus.damageBonus, 13);
+
+  const start = await fetch(`${baseUrl}/combat/start`, {
+    method: 'POST', headers: json, body: '{}',
+  });
+  assert.equal(start.status, 201);
+  const battle = await start.json();
+  const team = battle.battle.state.team;
+  assert.ok(team, 'o confronto deve congelar o bônus da formação');
+  assert.equal(team.power, formed.power);
+  assert.equal(team.damageBonus, 13);
+  assert.equal(battle.battle.state.player.maxHp, registration.character.vitality * 12 + 76);
+  assert.equal(
+    battle.battle.state.player.maxChakra,
+    40 + registration.character.intelligence * 8,
+  );
+  assert.ok(battle.battle.state.logs.some((entry) => entry.text.includes(String(formed.power))));
+
+  // Mudar a formação no meio do confronto não pode alterar a luta em andamento.
+  const resetFormation = await fetch(`${baseUrl}/roster/formation`, {
+    method: 'PUT', headers: json, body: JSON.stringify({ slots: [] }),
+  });
+  assert.equal(resetFormation.status, 200);
+  const afterReset = await (await fetch(`${baseUrl}/combat/current`, {
+    headers: { Cookie: cookie },
+  })).json();
+  assert.deepEqual(afterReset.battle.state.team, team);
+
+  const strike = await fetch(`${baseUrl}/combat/action`, {
+    method: 'POST', headers: json, body: JSON.stringify({ action: 'strike' }),
+  });
+  assert.equal(strike.status, 201);
+  const struck = await strike.json();
+  const expectedDamage = 12 + registration.character.strength * 2 + registration.character.level * 2 + 13;
+  assert.equal(struck.battle.state.enemy.hp, 90 + registration.character.level * 22 - expectedDamage);
+  assert.equal(struck.character.energy, 90);
 });

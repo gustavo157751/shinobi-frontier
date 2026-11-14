@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Backpack, Heart, ScrollText, Shield, Swords, Users, Wind, Zap } from 'lucide-react';
+import { useWorldPresence } from './useWorldPresence';
+import { TeamView } from './TeamView';
 
 const paths = [
   ['SHADOW_BLADE', 'Lâmina das Sombras'],
@@ -33,10 +35,11 @@ export default function App() {
   const [name, setName] = useState('');
   const [path, setPath] = useState('SHADOW_BLADE');
   const [mode, setMode] = useState<'register' | 'login'>('register');
-  const [view, setView] = useState<'village' | 'combat'>('village');
+  const [view, setView] = useState<'village' | 'combat' | 'team'>('village');
   const [battle, setBattle] = useState<Battle | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const presence = useWorldPresence(authenticated && Boolean(character));
 
   useEffect(() => {
     localStorage.removeItem('sf_token');
@@ -141,6 +144,18 @@ export default function App() {
     await combatRequest('/combat/current');
   }
 
+  /** Relê o personagem após gastar ryō ou ganhar recompensa em outra tela. */
+  async function refreshCharacter() {
+    try {
+      const response = await fetch(api + '/auth/me', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json() as { character: Character | null };
+      if (data.character) setCharacter(data.character);
+    } catch {
+      // Mantém o estado atual se a API estiver momentaneamente indisponível.
+    }
+  }
+
   const className = paths.find((item) => item[0] === character?.path)?.[1] || 'Shinobi';
 
   if (authChecking) return <main className="auth"><section className="formside"><small>SHINOBI FRONTIER</small><h2>Conectando ao mundo</h2><p className="muted">Verificando a sessão e carregando seu personagem...</p></section></main>;
@@ -149,8 +164,8 @@ export default function App() {
     return <main className="auth"><section className="art"><div className="seal">SF</div><small>UM NOVO MUNDO SHINOBI</small><h1>Forje seu<br/><em>destino.</em></h1><p>Reúna aliados. Domine técnicas. Escreva sua lenda.</p><b className="kanji">忍</b></section><section className="formside"><small>SHINOBI FRONTIER · API DO JOGO</small><h2>{mode === 'register' ? 'Crie sua jornada' : 'Bem-vindo de volta'}</h2><p className="muted">Acesse o mundo e comece sua evolução.</p><form onSubmit={submit}><label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email"/></label><label>Senha<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="Mínimo de 10 caracteres"/></label>{mode === 'register' && <><label>Nome do personagem<input value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={18} required autoComplete="nickname"/></label><label>Caminho shinobi<select value={path} onChange={(event) => setPath(event.target.value)}>{paths.map((item) => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label></>}<button>{mode === 'register' ? 'CRIAR CONTA' : 'ENTRAR NO MUNDO'}</button></form>{message && <p className="message">{message}</p>}<p className="switch">{mode === 'register' ? 'Já possui conta?' : 'Novo por aqui?'} <a onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? 'Entrar' : 'Criar conta'}</a></p><small className="foot">Uma aventura original · Shinobi Frontier</small></section></main>;
   }
 
-  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span>● MUNDO ONLINE <button onClick={() => void logout()}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className="nav-link" onClick={() => setMessage('As missões entram na próxima etapa da jornada.')}><ScrollText/> Missões</button><button className="nav-link" onClick={() => setMessage('A equipe poderá ser formada após o primeiro capítulo.')}><Users/> Equipe</button><button className="nav-link" onClick={() => setMessage('O inventário será conectado à progressão em uma próxima etapa.')}><Backpack/> Inventário</button><footer>CAPÍTULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
-    {view === 'village' ? <><small>VILA CENTRAL · REGIÃO DA SERRA</small><h1>Bem-vindo, {character.name}</h1><p className="muted">Seu caminho começa agora, shinobi.</p><section className="banner"><small>SUA JORNADA</small><h2>Uma trilha desconhecida<br/>se abre diante de você.</h2><p>Treine, descubra sua afinidade e enfrente os perigos do vale.</p><button onClick={openCombat}>INICIAR TREINO</button><b>忍</b></section><div className="cards"><section className="card"><small>PERFIL SHINOBI</small><h2>{character.name}</h2><p>{className} · Nível {character.level}</p><div className="stats"><span><Swords/>{character.strength}<small>FORÇA</small></span><span><Heart/>{character.vitality}<small>VITALIDADE</small></span><span><Wind/>{character.agility}<small>AGILIDADE</small></span><span><Zap/>{character.intelligence}<small>INTELIGÊNCIA</small></span></div></section><section className="card"><small>RECURSOS</small><p>Energia <b>{character.energy}/100</b></p><p>Ryō <b>{character.gold}</b></p><p>Caminho <b>{className}</b></p><aside>Seu personagem e sua progressão são salvos no servidor.</aside></section></div></> : <CombatView battle={battle} busy={busy} message={message} onStart={() => void combatRequest('/combat/start', {})} onAction={(action) => void combatRequest('/combat/action', { action })}/ >}
+  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span className={presence.connected ? 'presence connected' : 'presence'}><b>●</b> {presence.connected ? (presence.online === null ? 'SINCRONIZANDO MUNDO' : presence.online + ' SHINOBI ONLINE') : 'MUNDO OFFLINE'} <button onClick={() => void logout()}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className="nav-link" onClick={() => setMessage('As missões entram na próxima etapa da jornada.')}><ScrollText/> Missões</button><button className={view === 'team' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('team'); setMessage(''); }}><Users/> Equipe</button><button className="nav-link" onClick={() => setMessage('O inventário será conectado à progressão em uma próxima etapa.')}><Backpack/> Inventário</button><footer>CAPÍTULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
+    {view === 'village' ? <><small>VILA CENTRAL · REGIÃO DA SERRA</small><h1>Bem-vindo, {character.name}</h1><p className="muted">Seu caminho começa agora, shinobi.</p><section className="banner"><small>SUA JORNADA</small><h2>Uma trilha desconhecida<br/>se abre diante de você.</h2><p>Treine, descubra sua afinidade e enfrente os perigos do vale.</p><button onClick={openCombat}>INICIAR TREINO</button><b>忍</b></section><div className="cards"><section className="card"><small>PERFIL SHINOBI</small><h2>{character.name}</h2><p>{className} · Nível {character.level}</p><div className="stats"><span><Swords/>{character.strength}<small>FORÇA</small></span><span><Heart/>{character.vitality}<small>VITALIDADE</small></span><span><Wind/>{character.agility}<small>AGILIDADE</small></span><span><Zap/>{character.intelligence}<small>INTELIGÊNCIA</small></span></div></section><section className="card"><small>RECURSOS</small><p>Energia <b>{character.energy}/100</b></p><p>Ryō <b>{character.gold}</b></p><p>Caminho <b>{className}</b></p><aside>Seu personagem e sua progressão são salvos no servidor.</aside></section></div></> : view === 'team' ? <TeamView api={api} onProgress={() => void refreshCharacter()}/> : <CombatView battle={battle} busy={busy} message={message} onStart={() => void combatRequest('/combat/start', {})} onAction={(action) => void combatRequest('/combat/action', { action })}/ >}
     </main></div></div>;
 }
 
