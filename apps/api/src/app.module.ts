@@ -7,6 +7,7 @@ import { HealthController } from './health.controller';
 import { AuthModule } from './auth/auth.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { CombatModule } from './combat/combat.module';
+import { RosterModule } from './roster/roster.module';
 @Module({
  imports: [
   ConfigModule.forRoot({
@@ -17,6 +18,7 @@ import { CombatModule } from './combat/combat.module';
   RedisModule,
   AuthModule,
   RealtimeModule,
+  RosterModule,
   CombatModule,
  ],
  controllers: [HealthController],

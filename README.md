@@ -36,6 +36,20 @@ Rotas autenticadas do combate (sessão pelo cookie `sf_session`):
 - `POST /api/combat/start` — inicia o treino e consome 10 pontos de energia.
 - `POST /api/combat/action` — envia `{ "action": "strike" | "technique" | "guard" }`.
 
+## Equipe e formação
+
+O quartel permite recrutar shinobis e montar um esquadrão de até quatro posições: 1 e 2 formam a linha de frente, 3 e 4 a retaguarda. Cada papel contribui de forma diferente — vanguarda aumenta a vitalidade e reduz o dano recebido, atacante soma dano (mais forte na retaguarda), suporte amplia chakra e recuperação na defesa, e controle reforça técnicas. O poder e os bônus são calculados no servidor por uma função pura compartilhada com a interface, então o número exibido e o aplicado em combate são sempre os mesmos.
+
+Ao iniciar um confronto, o bônus da formação é congelado no estado da batalha: mudar o esquadrão no meio da luta não altera o confronto em andamento. Confrontos antigos sem esse campo continuam válidos e apenas não recebem bônus. Recrutamento custa ryō e exige nível mínimo; a validação de saldo, posse e posições é sempre do servidor.
+
+Rotas autenticadas do quartel:
+- `GET /api/roster` — formação atual, poder, bônus, elenco recrutado e catálogo disponível.
+- `GET /api/roster/catalog` — catálogo completo com custo, nível exigido e situação de cada ninja.
+- `POST /api/roster/recruit` — envia `{ "ninjaCode": "STONE_WARDEN" }`.
+- `PUT /api/roster/formation` — envia `{ "slots": [{ "ninjaCode": "STONE_WARDEN", "position": 1 }] }`.
+
+O catálogo é original deste projeto e vive em `apps/api/src/roster/ninja-catalogue.ts`: ao iniciar, a API sincroniza a tabela `Ninja` com essas definições versionadas, sem migração de schema adicional.
+
 As rotas de jogo autenticadas usam um cookie de sessão `HttpOnly`; o navegador envia esse cookie automaticamente. O frontend não persiste JWT nem personagem em `localStorage`. `GET /api/auth/me` restaura a sessão e carrega o personagem do banco; `POST /api/auth/logout` encerra a sessão no navegador.
 
 ## Configuração e execução hospedada
@@ -52,10 +66,10 @@ O GitHub versiona o código e executa verificações no Actions; ele não hosped
 
 Em produção, aplique as migrações com `npm run prisma:migrate:deploy --workspace @shinobi/api`, gere o frontend com `npm run build` e inicie a API compilada com `npm run start:prod --workspace @shinobi/api`. Configure o serviço de hospedagem para iniciar novamente o processo quando ele terminar e monitore `/api/health`, que retorna indisponível se o PostgreSQL não responder.
 
-O CI agora sobe PostgreSQL e Redis efêmeros, aplica a migração inicial e executa testes HTTP cobrindo registro, login, sessão por cookie, acesso protegido ao combate e logout, além de um teste de Socket.IO que valida a presença autenticada e a recusa de conexões sem cookie. Bancos de produção já criados com `db push` precisam de baseline antes de usar a migração inicial.
+O CI agora sobe PostgreSQL e Redis efêmeros, aplica a migração inicial e executa testes HTTP cobrindo registro, login, sessão por cookie, acesso protegido ao combate e logout, além de um teste de Socket.IO que valida a presença autenticada e a recusa de conexões sem cookie. Os testes também cobrem recrutamento, validação de formação e o bônus congelado no combate. Bancos de produção já criados com `db push` precisam de baseline antes de usar a migração inicial.
 
 ## Próximas entregas
-1. Recrutamento, equipe, inventário e missões com recompensas persistentes.
+1. Inventário e missões com recompensas persistentes, usando a formação já ativa no combate.
 2. Expandir técnicas, inimigos e encontros com balanceamento e conteúdo original.
 3. Chat do mundo, canais de sala e matchmaking sobre a presença já publicada em `/game`.
 4. Arena PvP, guildas, eventos, economia, anti-cheat, observabilidade, backups, testes e deploy escalável.
