@@ -5,6 +5,25 @@ const databaseAvailable = Boolean(process.env.DATABASE_URL);
 let app;
 let baseUrl;
 
+/** Resolve com o nome do primeiro evento disparado entre os informados. */
+function waitForAny(socket, events, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const handlers = events.map((event) => {
+      const handler = (payload) => { cleanup(); resolve({ event, payload }); };
+      socket.on(event, handler);
+      return [event, handler];
+    });
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`timeout esperando ${events.join(' ou ')}`));
+    }, timeoutMs);
+    function cleanup() {
+      clearTimeout(timer);
+      for (const [event, handler] of handlers) socket.off(event, handler);
+    }
+  });
+}
+
 before(async () => {
   if (!databaseAvailable) return;
   const { NestFactory } = require('@nestjs/core');
@@ -31,7 +50,10 @@ test('PostgreSQL registration, login, cookie session, protected game route and l
 }, async () => {
   const health = await fetch(`${baseUrl}/health`);
   assert.equal(health.status, 200);
-  assert.equal((await health.json()).database, 'connected');
+  const healthBody = await health.json();
+  assert.equal(healthBody.database, 'connected');
+  // Redis é opcional: o ambiente de CI pode rodá-lo ou degradar para memória local.
+  assert.ok(['connected', 'disabled', 'unavailable'].includes(healthBody.redis));
 
   const origin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-10);
@@ -128,4 +150,34 @@ test('PostgreSQL registration, login, cookie session, protected game route and l
     body: '{}',
   });
   assert.equal(rejectedOrigin.status, 403);
+
+  const { io } = require('socket.io-client');
+  const socketUrl = `${baseUrl.replace(/\/api$/, '')}/game`;
+  const socket = io(socketUrl, {
+    transports: ['websocket'],
+    reconnection: false,
+    extraHeaders: { Cookie: loginCookie.split(';')[0] },
+  });
+  try {
+    const presencePromise = waitForAny(socket, ['world:presence']);
+    const ready = await waitForAny(socket, ['session:ready']);
+    assert.equal(ready.payload.userId, registration.user.id);
+    assert.ok(ready.payload.online >= 1);
+
+    const presence = (await presencePromise).payload;
+    assert.ok(presence.online >= 1);
+    assert.ok(['redis', 'memory'].includes(presence.store));
+  } finally {
+    socket.close();
+  }
+
+  const anonymous = io(socketUrl, { transports: ['websocket'], reconnection: false });
+  try {
+    let sessionReady = false;
+    anonymous.on('session:ready', () => { sessionReady = true; });
+    await waitForAny(anonymous, ['disconnect', 'connect_error']);
+    assert.equal(sessionReady, false, 'sem cookie de sessão o gateway deve recusar a conexão');
+  } finally {
+    anonymous.close();
+  }
 });
