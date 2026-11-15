@@ -1,39 +1,21 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { refreshEnergy } from '../character/energy';
+import { applyExperience } from '../character/progression';
+import { completeMission, describeRewards, failMission, MissionCharacter } from '../missions/mission-rewards';
 import { PrismaService } from '../prisma/prisma.service';
-import { formationBonuses, FormationMember } from '../roster/formation';
-import { NinjaRole } from '../roster/ninja-catalogue';
+import { loadFormationBonus } from '../roster/team-bonus';
+import { BattleState, buildBattleState, NO_TEAM, presentBattle } from './battle-state';
 
 type CombatAction = 'strike' | 'technique' | 'guard';
-type BattleLog = { turn: number; text: string; side: 'player' | 'enemy' | 'system' };
-type BattleTeam = {
-  power: number;
-  damageBonus: number;
-  techniqueBonus: number;
-  guardChakra: number;
-  damageReduction: number;
-};
-type BattleState = {
-  enemy: { code: string; name: string; level: number; hp: number; maxHp: number };
-  player: { hp: number; maxHp: number; chakra: number; maxChakra: number };
-  turn: number;
-  logs: BattleLog[];
-  /** Congelado no início do confronto: mudar a formação não altera a luta em curso. */
-  team?: BattleTeam;
+
+type CombatReward = {
+  experience: number;
+  gold: number;
+  items: Array<{ code: string; name: string; quantity: number }>;
 };
 
-const NO_TEAM: BattleTeam = {
-  power: 0,
-  damageBonus: 0,
-  techniqueBonus: 0,
-  guardChakra: 0,
-  damageReduction: 0,
-};
-
-export function describeTeam(team: BattleTeam): string {
-  if (team.power <= 0) return 'Você luta sozinho; recrute ninjas para somar poder.';
-  return `Sua formação soma ${team.power} de poder e entra no confronto com você.`;
-}
+export { describeTeam } from './battle-state';
 
 @Injectable()
 export class CombatService {
@@ -46,45 +28,45 @@ export class CombatService {
       where: { characterId: character.id, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
     });
-    return { battle: battle ? this.present(battle) : null };
+    return { battle: battle ? presentBattle(battle) : null };
   }
 
   async start(userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const character = await tx.character.findFirst({ where: { userId } });
-      if (!character) throw new NotFoundException('Personagem não encontrado.');
+      const found = await tx.character.findFirst({ where: { userId } });
+      if (!found) throw new NotFoundException('Personagem não encontrado.');
 
       const active = await tx.combatBattle.findFirst({
-        where: { characterId: character.id, status: 'ACTIVE' },
+        where: { characterId: found.id, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
       });
-      if (active) return { battle: this.present(active), character };
+      if (active) return { battle: presentBattle(active), character: found };
+
+      const character = await refreshEnergy(tx, found);
       if (character.energy < 10) throw new BadRequestException('Você precisa de 10 pontos de energia para iniciar um confronto.');
 
-      const team = await this.teamBonus(tx, character.id);
-      const maxHp = character.vitality * 12 + team.maxHp;
-      const maxChakra = 40 + character.intelligence * 8 + team.maxChakra;
-      const state: BattleState = {
-        enemy: { code: 'VEIL_SCOUT', name: 'Batedor do Véu', level: character.level, hp: 90 + character.level * 22, maxHp: 90 + character.level * 22 },
-        player: { hp: maxHp, maxHp, chakra: maxChakra, maxChakra },
-        turn: 1,
-        logs: [
-          { turn: 1, text: 'Um Batedor do Véu bloqueia a trilha da serra.', side: 'system' },
-          { turn: 1, text: describeTeam(team), side: 'system' },
-        ],
-        team: {
-          power: team.power,
-          damageBonus: team.damageBonus,
-          techniqueBonus: team.techniqueBonus,
-          guardChakra: team.guardChakra,
-          damageReduction: team.damageReduction,
+      const team = await loadFormationBonus(tx, character.id);
+      const state = buildBattleState({
+        character,
+        team,
+        encounter: {
+          code: 'VEIL_SCOUT',
+          name: 'Batedor do Véu',
+          level: character.level,
+          maxHp: 90 + character.level * 22,
+          attack: 8 + character.level * 3,
         },
-      };
-      const updatedCharacter = await tx.character.update({ where: { id: character.id }, data: { energy: { decrement: 10 } } });
+        intro: 'Um Batedor do Véu bloqueia a trilha da serra.',
+      });
+
+      const updatedCharacter = await tx.character.update({
+        where: { id: character.id },
+        data: { energy: { decrement: 10 }, energyUpdatedAt: new Date() },
+      });
       const battle = await tx.combatBattle.create({
         data: { characterId: character.id, status: 'ACTIVE', state: state as unknown as Prisma.InputJsonValue },
       });
-      return { battle: this.present(battle), character: updatedCharacter };
+      return { battle: presentBattle(battle), character: updatedCharacter };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
@@ -122,31 +104,40 @@ export class CombatService {
       state.logs.push({ turn, text: actionText, side: 'player' });
 
       let status = 'ACTIVE';
-      let reward: { experience: number; gold: number } | null = null;
-      let updatedCharacter = character;
+      let reward: CombatReward | null = null;
+      let updatedCharacter: typeof character | MissionCharacter = character;
       if (state.enemy.hp <= 0) {
         status = 'VICTORY';
-        reward = { experience: 70 + character.level * 20, gold: 25 + character.level * 8 };
-        let level = character.level;
-        const experience = character.experience + reward.experience;
-        let strength = character.strength;
-        let vitality = character.vitality;
-        let agility = character.agility;
-        let intelligence = character.intelligence;
-        while (experience >= level * 100) {
-          level += 1;
-          strength += 2;
-          vitality += 2;
-          agility += 1;
-          intelligence += 1;
+        if (state.mission) {
+          // Missão: a recompensa vem do catálogo, nunca do treino padrão.
+          const completion = await completeMission(tx, character, state.mission.code);
+          if (completion) {
+            reward = completion.rewards;
+            updatedCharacter = completion.character;
+            state.logs.push({ turn, text: describeRewards(completion), side: 'system' });
+          } else {
+            state.logs.push({
+              turn,
+              text: 'Esta missão já havia sido concluída; nenhuma recompensa adicional foi creditada.',
+              side: 'system',
+            });
+          }
+        } else {
+          const training = { experience: 70 + character.level * 20, gold: 25 + character.level * 8 };
+          const progression = applyExperience(character, training.experience);
+          reward = { ...training, items: [] };
+          state.logs.push({
+            turn,
+            text: 'Vitória! Você recebeu ' + training.experience + ' de experiência e ' + training.gold + ' ryō.',
+            side: 'system',
+          });
+          updatedCharacter = await tx.character.update({
+            where: { id: character.id },
+            data: { ...progression, gold: { increment: training.gold } },
+          });
         }
-        state.logs.push({ turn, text: 'Vitória! Você recebeu ' + reward.experience + ' de experiência e ' + reward.gold + ' ryō.', side: 'system' });
-        updatedCharacter = await tx.character.update({
-          where: { id: character.id },
-          data: { experience, gold: { increment: reward.gold }, level, strength, vitality, agility, intelligence },
-        });
       } else {
-        const incoming = 8 + state.enemy.level * 3 + Math.floor(turn / 2);
+        const incoming = (state.enemy.attack ?? 8 + state.enemy.level * 3) + Math.floor(turn / 2);
         const mitigated = Math.max(1, Math.round(incoming * (1 - team.damageReduction)));
         const damage = action === 'guard' ? Math.max(1, Math.floor(mitigated * 0.4)) : mitigated;
         state.player.hp = Math.max(0, state.player.hp - damage);
@@ -154,7 +145,16 @@ export class CombatService {
         state.turn += 1;
         if (state.player.hp <= 0) {
           status = 'DEFEAT';
-          state.logs.push({ turn, text: 'Você recua para se recuperar. O confronto terminou.', side: 'system' });
+          if (state.mission) {
+            await failMission(tx, character.id, state.mission.code);
+            state.logs.push({
+              turn,
+              text: 'Você recua. A missão continua disponível para uma nova tentativa.',
+              side: 'system',
+            });
+          } else {
+            state.logs.push({ turn, text: 'Você recua para se recuperar. O confronto terminou.', side: 'system' });
+          }
         }
       }
 
@@ -163,32 +163,7 @@ export class CombatService {
         where: { id: battle.id },
         data: { status, state: state as unknown as Prisma.InputJsonValue },
       });
-      return { battle: this.present(saved), character: updatedCharacter, reward };
+      return { battle: presentBattle(saved), character: updatedCharacter, reward };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  }
-
-  /**
-   * Bônus da formação atual do personagem. Consulta direta, sem depender do
-   * RosterModule, para manter o combate autônomo e testável.
-   */
-  private async teamBonus(tx: Prisma.TransactionClient, characterId: string) {
-    const roster = await tx.characterNinja.findMany({
-      where: { characterId },
-      include: { ninja: true },
-    });
-    return formationBonuses(
-      roster.map((entry): FormationMember => ({
-        code: entry.ninja.code,
-        role: entry.ninja.role as NinjaRole,
-        rarity: entry.ninja.rarity,
-        level: entry.level,
-        stars: entry.stars,
-        position: entry.position,
-      })),
-    );
-  }
-
-  private present(battle: { id: string; status: string; state: Prisma.JsonValue; createdAt: Date; updatedAt: Date }) {
-    return { id: battle.id, status: battle.status, state: battle.state, createdAt: battle.createdAt, updatedAt: battle.updatedAt };
   }
 }

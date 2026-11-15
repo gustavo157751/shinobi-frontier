@@ -50,6 +50,22 @@ Rotas autenticadas do quartel:
 
 O catálogo é original deste projeto e vive em `apps/api/src/roster/ninja-catalogue.ts`: ao iniciar, a API sincroniza a tabela `Ninja` com essas definições versionadas, sem migração de schema adicional.
 
+## Missões e inventário
+
+O quadro de missões oferece confrontos dedicados com inimigo, custo de energia e recompensa próprios, todos definidos em `apps/api/src/missions/mission-catalogue.ts`. A primeira missão fica aberta desde o nível 1; as seguintes exigem nível crescente. Aceitar uma missão consome energia, cria um confronto ativo e marca a missão como `ACTIVE`; só é possível ter um confronto ativo por personagem. A recompensa (experiência, ryō e itens) é creditada exatamente uma vez na vitória, via `completeMission`; na derrota a missão volta a `AVAILABLE` e nada é pago. Missões já concluídas não podem ser reaceitas.
+
+O inventário guarda itens em `CharacterItem` (código + quantidade), com catálogo em `apps/api/src/inventory/item-catalogue.ts`: consumíveis (`HERBAL_TONIC` +20, `EMBER_RATION` +35) restauram energia até o teto de 100, e materiais (`VEIL_SHARD`, `ASH_SIGIL`, `RIVER_PEARL`, `STONE_CHARM`) ficam reservados para usos futuros. Usar um consumível com energia cheia é recusado.
+
+A energia regenera de forma preguiçosa: 1 ponto por minuto, calculado a partir de `energyUpdatedAt` sempre que o personagem é lido (combate, missões, inventário, `/auth/me`). Gastar energia ancora o timestamp em `now`. Não há cron nem job.
+
+Rotas autenticadas de missões e inventário:
+- `GET /api/missions` — quadro com nível, energia e status de cada missão.
+- `POST /api/missions/accept` — envia `{ "missionCode": "TRAIL_OF_ASHES" }`.
+- `GET /api/inventory` — itens possuídos e energia atual.
+- `POST /api/inventory/use` — envia `{ "itemCode": "HERBAL_TONIC" }`.
+
+As missões usam a formação ativa no momento do aceite: o bônus do esquadrão é congelado no estado da batalha, exatamente como no treino.
+
 As rotas de jogo autenticadas usam um cookie de sessão `HttpOnly`; o navegador envia esse cookie automaticamente. O frontend não persiste JWT nem personagem em `localStorage`. `GET /api/auth/me` restaura a sessão e carrega o personagem do banco; `POST /api/auth/logout` encerra a sessão no navegador.
 
 ## Configuração e execução hospedada
@@ -66,11 +82,10 @@ O GitHub versiona o código e executa verificações no Actions; ele não hosped
 
 Em produção, aplique as migrações com `npm run prisma:migrate:deploy --workspace @shinobi/api`, gere o frontend com `npm run build` e inicie a API compilada com `npm run start:prod --workspace @shinobi/api`. Configure o serviço de hospedagem para iniciar novamente o processo quando ele terminar e monitore `/api/health`, que retorna indisponível se o PostgreSQL não responder.
 
-O CI agora sobe PostgreSQL e Redis efêmeros, aplica a migração inicial e executa testes HTTP cobrindo registro, login, sessão por cookie, acesso protegido ao combate e logout, além de um teste de Socket.IO que valida a presença autenticada e a recusa de conexões sem cookie. Os testes também cobrem recrutamento, validação de formação e o bônus congelado no combate. Bancos de produção já criados com `db push` precisam de baseline antes de usar a migração inicial.
+O CI agora sobe PostgreSQL e Redis efêmeros, aplica a migração inicial e executa testes HTTP cobrindo registro, login, sessão por cookie, acesso protegido ao combate e logout, além de um teste de Socket.IO que valida a presença autenticada e a recusa de conexões sem cookie. Os testes também cobrem recrutamento, validação de formação, o bônus congelado no combate e, agora, missões com recompensa única, inventário e regeneração preguiçosa de energia. Bancos de produção já criados com `db push` precisam de baseline antes de usar a migração inicial.
 
 ## Próximas entregas
-1. Inventário e missões com recompensas persistentes, usando a formação já ativa no combate.
-2. Expandir técnicas, inimigos e encontros com balanceamento e conteúdo original.
+1. Expandir técnicas, inimigos e encontros com balanceamento e conteúdo original.
 3. Chat do mundo, canais de sala e matchmaking sobre a presença já publicada em `/game`.
 4. Arena PvP, guildas, eventos, economia, anti-cheat, observabilidade, backups, testes e deploy escalável.
 
