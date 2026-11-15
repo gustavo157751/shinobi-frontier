@@ -48,7 +48,7 @@ Rotas autenticadas do quartel:
 - `POST /api/roster/recruit` — envia `{ "ninjaCode": "STONE_WARDEN" }`.
 - `PUT /api/roster/formation` — envia `{ "slots": [{ "ninjaCode": "STONE_WARDEN", "position": 1 }] }`.
 
-O catálogo é original deste projeto e vive em `apps/api/src/roster/ninja-catalogue.ts`: ao iniciar, a API sincroniza a tabela `Ninja` com essas definições versionadas, sem migração de schema adicional.
+O catálogo é original deste projeto e vive em `apps/api/src/roster/ninja-catalogue.ts`: ao iniciar, a API sincroniza a tabela `Ninja` com essas definições versionadas, sem migração de schema adicional. O elenco original inclui as famílias da Serra, do Véu e do Rio — vanguardas, atacantes, suportes e controladores de raridade 3 a 5.
 
 ## Missões e inventário
 
