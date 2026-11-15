@@ -1,7 +1,8 @@
 /**
- * Bônus de formação inspirados pelo padrão de funções/posições analisado em
- * Shinobi Frontier, reescritos para o elenco e as regras deste jogo.
- * Posições 0–1 são a linha de frente; 2–4 são a retaguarda.
+ * Bônus originais de composição por função e posição tática.
+ * Grade 3×3 em coordenadas por equipe: colunas 0/1/2 = retaguarda/meio/frente.
+ * As posições táticas seguem a grade do KonohaHub; efeitos e percentuais são
+ * regras próprias deste protótipo, não uma reprodução de dados do site.
  */
 
 export const FORMATION_ROLES = {
@@ -32,6 +33,14 @@ const ROLE_BY_ID = {
 
 const RARITY_TIER = { comum: 1, raro: 2, epico: 3, lendario: 4 };
 
+export function formationColumn(position) {
+  return Number.isInteger(position) && position >= 0 && position <= 8 ? position % 3 : -1;
+}
+
+export function formationLane(position) {
+  return ({ 0: 'Retaguarda', 1: 'Meio', 2: 'Frente' })[formationColumn(position)] ?? 'Sem posição';
+}
+
 export function roleFor(character) {
   if (character?.id === 'hero' || character?.isHero) {
     return ({ taijutsu: 'vanguard', ninjutsu: 'striker', genjutsu: 'control' })[character.style] ?? 'striker';
@@ -54,31 +63,30 @@ export function emptyFormationBonus() {
   };
 }
 
-/**
- * Calcula os bônus do esquadrão a partir dos papéis e posições ordenadas.
- * O cálculo é puro para manter UI e combate coerentes e facilitar testes.
- */
+/** Calcula bônus puros a partir de integrantes e suas células de 0 a 8. */
 export function formationBonuses(members = []) {
   const bonus = emptyFormationBonus();
   const placed = members.filter(
-    (member) => Number.isInteger(member.position) && member.position >= 0 && member.position <= 4,
+    (member) => Number.isInteger(member.position) && member.position >= 0 && member.position <= 8,
   );
 
   for (const member of placed) {
     const role = member.role ?? roleFor(member.character);
     const tier = rarityTier(member.character?.rarity ?? member.rarity);
     const level = Math.max(1, Number(member.level) || 1);
-    const front = member.position <= 1;
+    const column = formationColumn(member.position);
+    const front = column === 2;
+    const rear = column === 0;
 
     if (role === 'vanguard') {
       bonus.hpPct += 0.012 * tier + 0.001 * (level - 1);
       if (front) bonus.damageReduction += 0.012 * tier;
     } else if (role === 'striker') {
       bonus.basicDamagePct += 0.018 * tier + 0.001 * (level - 1);
-      if (!front) bonus.basicDamagePct += 0.01 * tier;
+      if (rear) bonus.basicDamagePct += 0.01 * tier;
     } else if (role === 'support') {
       bonus.chakraPct += 0.015 * tier;
-      bonus.guardChakra += 2 + tier + (front ? 0 : 2);
+      bonus.guardChakra += 2 + tier + (rear ? 2 : 0);
     } else if (role === 'control') {
       bonus.techniqueDamagePct += 0.02 * tier + 0.001 * (level - 1);
       if (front) bonus.damageReduction += 0.008 * tier;
@@ -94,7 +102,7 @@ export function formationBonuses(members = []) {
   return bonus;
 }
 
-/** Aplica os bônus gerais ao snapshot de batalha, sem alterar os dados-base. */
+/** Aplica bônus gerais ao snapshot de batalha sem alterar os dados-base. */
 export function applyFormationBonus(unit, bonus) {
   const maxHp = Math.round(unit.maxHp * (1 + bonus.hpPct));
   const maxChakra = Math.round(unit.maxChakra * (1 + bonus.chakraPct));

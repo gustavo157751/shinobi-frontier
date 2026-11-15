@@ -76,3 +76,19 @@ test('sinergia de suporte adiciona chakra ao Guardar sem exceder o máximo', asy
   await battle.takeTurn(ally, { type: 'guard' });
   assert.equal(ally.chakra, ally.maxChakra);
 });
+
+test('ataque padrão e IA priorizam a linha frontal, mas seleção manual alcança a retaguarda', () => {
+  const ally = makeUnit('ally', { uid: 'ally-attacker', slot: 4 });
+  const rearEnemy = makeUnit('enemy', { uid: 'enemy-rear', slot: 0, hp: 100 });
+  const frontEnemy = makeUnit('enemy', { uid: 'enemy-front', slot: 2, hp: 900 });
+  const battle = new Battle({ allies: [ally], enemies: [rearEnemy, frontEnemy], hooks, tuning });
+
+  assert.equal(battle.defaultTargetUid(ally), 'enemy-front');
+  assert.equal(battle.resolveTarget(ally, 'enemy-rear'), rearEnemy);
+
+  const enemyAi = makeUnit('enemy', { uid: 'enemy-ai', slot: 4, chakra: 0, def: { jutsu: [] } });
+  const rearAlly = makeUnit('ally', { uid: 'ally-rear', slot: 0, hp: 100 });
+  const frontAlly = makeUnit('ally', { uid: 'ally-front', slot: 2, hp: 900 });
+  const aiBattle = new Battle({ allies: [rearAlly, frontAlly], enemies: [enemyAi], hooks, tuning });
+  assert.equal(aiBattle.chooseAiAction(enemyAi).targetUid, 'ally-front');
+});

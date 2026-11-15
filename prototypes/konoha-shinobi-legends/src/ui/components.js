@@ -105,7 +105,7 @@ export function battleCard(unit, { selected = false } = {}) {
         </div>
         <div class="unit__ident">
           <span class="unit__name">${esc(unit.name)}</span>
-          <span class="unit__level">Nv. ${unit.level} · ${esc(style.label)}</span>
+          <span class="unit__level">P${String(unit.slot + 1).padStart(2, '0')} · Nv. ${unit.level} · ${esc(style.label)}</span>
         </div>
         <div class="unit__initiative">${unit.spd}</div>
       </div>

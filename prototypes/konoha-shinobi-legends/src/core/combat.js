@@ -19,6 +19,7 @@ import { BASIC_ATTACKS, DAMAGE_TUNING } from '../data/characters.js';
 import { getJutsu, jutsusOf } from '../data/jutsus.js';
 import { STATUS_META, statusMeta } from '../data/statuses.js';
 import { sleep, randInt } from './utils.js';
+import { formationColumn } from './formation.js';
 
 const MAX_ROUNDS = 24;
 
@@ -64,6 +65,15 @@ export class Battle {
     return this.aliveOf(unit.side === 'ally' ? 'enemy' : 'ally');
   }
 
+  frontlineTargets(pool) {
+    const frontline = pool.filter((target) => formationColumn(target.slot) === 2);
+    return frontline.length ? frontline : pool;
+  }
+
+  defaultTargetUid(unit) {
+    return this.frontlineTargets(this.enemiesOf(unit))[0]?.uid ?? null;
+  }
+
   alliesOf(unit) {
     return this.aliveOf(unit.side);
   }
@@ -99,7 +109,11 @@ export class Battle {
 
       const order = [...this.aliveOf('ally'), ...this.aliveOf('enemy')].sort((a, b) => {
         const diff = this.speedOf(b) - this.speedOf(a);
-        return diff !== 0 ? diff : Math.random() - 0.5;
+        if (diff !== 0) return diff;
+        const lane = formationColumn(b.slot) - formationColumn(a.slot);
+        if (lane !== 0) return lane;
+        const row = Math.floor(a.slot / 3) - Math.floor(b.slot / 3);
+        return row !== 0 ? row : Math.random() - 0.5;
       });
 
       for (const unit of order) {
@@ -292,7 +306,8 @@ export class Battle {
     if (!pool.length) return null;
     const chosen = targetUid ? this.unitByUid(targetUid) : null;
     if (chosen && chosen.alive && chosen.side !== unit.side) return chosen;
-    return pool[randInt(0, pool.length - 1)];
+    const candidates = this.frontlineTargets(pool);
+    return candidates[randInt(0, candidates.length - 1)];
   }
 
   /* ------------------------------- jutsus -------------------------------- */
@@ -537,7 +552,12 @@ export class Battle {
           Array.isArray(ally.def.pursuit?.triggers) &&
           ally.def.pursuit.triggers.includes(statusType),
       )
-      .sort((a, b) => this.speedOf(b) - this.speedOf(a));
+      .sort((a, b) => {
+        const speed = this.speedOf(b) - this.speedOf(a);
+        if (speed !== 0) return speed;
+        const lane = formationColumn(b.slot) - formationColumn(a.slot);
+        return lane !== 0 ? lane : a.slot - b.slot;
+      });
 
     for (const pursuer of pursuers) {
       if (!target.alive) break;
@@ -575,6 +595,7 @@ export class Battle {
   chooseAiAction(unit) {
     const targets = this.enemiesOf(unit);
     if (!targets.length) return { type: 'guard' };
+    const reachableTargets = this.frontlineTargets(targets);
     const jutsus = jutsusOf(unit.def).filter((jutsu) => jutsu.cost <= unit.chakra);
 
     // Se está com pouca vida e tem cura/escudo, prioriza sobreviver.
@@ -586,10 +607,10 @@ export class Battle {
     }
     if (jutsus.length && Math.random() < 0.72) {
       const jutsu = jutsus[randInt(0, jutsus.length - 1)];
-      const target = supportsAnyone(jutsu) ? unit : pickWeakest(targets);
+      const target = supportsAnyone(jutsu) ? unit : pickWeakest(reachableTargets);
       return { type: 'jutsu', jutsuId: jutsu.id, targetUid: target.uid };
     }
-    return { type: 'basic', targetUid: pickWeakest(targets).uid };
+    return { type: 'basic', targetUid: pickWeakest(reachableTargets).uid };
   }
 }
 

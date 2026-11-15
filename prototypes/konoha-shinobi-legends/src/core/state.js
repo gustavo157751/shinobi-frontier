@@ -37,10 +37,63 @@ export const TRAIN_COST = 25;
 export const MEDITATE_COST = 40;
 export const MEDITATE_STAMINA = 6;
 
+const FORMATION_CELL_ORDER = [2, 5, 8, 1, 4, 7, 0, 3, 6];
+const PREFERRED_FORMATION_SLOTS = { hero: 4, naruto: 2, sasuke: 5, sakura: 1, kakashi: 7 };
+
+function defaultFormationSlots(squad = []) {
+  const slots = {};
+  const used = new Set();
+  for (const id of squad) {
+    const preferred = PREFERRED_FORMATION_SLOTS[id];
+    if (Number.isInteger(preferred) && !used.has(preferred)) {
+      slots[id] = preferred;
+      used.add(preferred);
+    }
+  }
+  for (const id of squad) {
+    if (Number.isInteger(slots[id])) continue;
+    const free = FORMATION_CELL_ORDER.find((slot) => !used.has(slot));
+    if (free !== undefined) {
+      slots[id] = free;
+      used.add(free);
+    }
+  }
+  return slots;
+}
+
+function normalizeFormationSlots(candidate, squad) {
+  const defaults = defaultFormationSlots(squad);
+  const slots = {};
+  const used = new Set();
+  if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+    for (const id of squad) {
+      const position = Number(candidate[id]);
+      if (Number.isInteger(position) && position >= 0 && position <= 8 && !used.has(position)) {
+        slots[id] = position;
+        used.add(position);
+      }
+    }
+  }
+  for (const id of squad) {
+    if (Number.isInteger(slots[id])) continue;
+    const preferred = defaults[id];
+    const position = !used.has(preferred)
+      ? preferred
+      : FORMATION_CELL_ORDER.find((slot) => !used.has(slot));
+    if (position !== undefined) {
+      slots[id] = position;
+      used.add(position);
+    }
+  }
+  return slots;
+}
+
 /* ----------------------------- ESTADO NOVO ----------------------------- */
 
 function newState({ name, gender, style }) {
   const now = Date.now();
+  const squad = ['hero', ...STARTER_NINJAS.slice(0, 4)];
+  const formationSlots = defaultFormationSlots(squad);
   return {
     version: SAVE_VERSION,
     createdAt: now,
@@ -61,7 +114,8 @@ function newState({ name, gender, style }) {
     },
     tips: { chakraSpent: 0, staminaSpent: 0 },
     ninjas: [...STARTER_NINJAS], // heróis clássicos desbloqueados
-    squad: ['hero', ...STARTER_NINJAS.slice(0, 4)],
+    squad: [...squad].sort((a, b) => formationSlots[a] - formationSlots[b]),
+    formationSlots,
     scrolls: { ...STARTING_SCROLLS },
     missions: {}, // { [missionId]: { wins: n, bestRound: n } }
     stats: { battles: 0, victories: 0, combos: 0, damage: 0 },
@@ -79,6 +133,14 @@ function migrate(raw) {
     gender: raw.player?.gender ?? 'masculino',
     style: HERO_TEMPLATES[raw.player?.style] ? raw.player.style : 'ninjutsu',
   });
+  const ninjas = Array.isArray(raw.ninjas) ? raw.ninjas.filter((id) => getCharacter(id)) : base.ninjas;
+  const candidateSquad = Array.isArray(raw.squad) ? raw.squad : base.squad;
+  const squad = candidateSquad.filter((id, index) =>
+    (id === 'hero' || ninjas.includes(id)) && candidateSquad.indexOf(id) === index,
+  );
+  if (!squad.includes('hero')) squad.unshift('hero');
+  squad.splice(5);
+  const formationSlots = normalizeFormationSlots(raw.formationSlots, squad);
   const merged = {
     ...base,
     ...raw,
@@ -88,8 +150,9 @@ function migrate(raw) {
     stats: { ...base.stats, ...(raw.stats ?? {}) },
     settings: { ...base.settings, ...(raw.settings ?? {}) },
     missions: raw.missions ?? {},
-    ninjas: Array.isArray(raw.ninjas) ? raw.ninjas.filter((id) => getCharacter(id)) : base.ninjas,
-    squad: Array.isArray(raw.squad) ? raw.squad : base.squad,
+    ninjas,
+    squad: squad.sort((a, b) => formationSlots[a] - formationSlots[b]),
+    formationSlots,
   };
   merged.version = SAVE_VERSION;
   return merged;
@@ -129,6 +192,10 @@ class GameStore {
   }
 
   commit() {
+    if (this.state?.squad) {
+      this.state.formationSlots = normalizeFormationSlots(this.state.formationSlots, this.state.squad);
+      this.state.squad.sort((a, b) => this.state.formationSlots[a] - this.state.formationSlots[b]);
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch (error) {
@@ -193,11 +260,11 @@ class GameStore {
     // O protagonista nunca pode ficar fora da formação (protege saves antigos/editados).
     if (!ids.includes('hero')) ids.unshift('hero');
     ids.splice(5);
-    const members = ids.map((id, position) => {
+    const members = ids.map((id) => {
       const character = id === 'hero'
         ? { ...this.hero, id: 'hero', rarity: 'lendario' }
         : getCharacter(id);
-      return { character, position, level: this.level };
+      return { character, position: this.formationSlot(id) ?? 4, level: this.level };
     });
     const bonus = formationBonuses(members);
     return ids.map((id, index) => {
@@ -206,13 +273,13 @@ class GameStore {
         return applyFormationBonus(buildUnit(hero, {
           level: this.level,
           side: 'ally',
-          slot: index,
+          slot: this.formationSlot(id) ?? index,
           isHero: true,
           displayName: this.state.player.name,
         }), bonus);
       }
       const character = getCharacter(id);
-      return applyFormationBonus(buildUnit(character, { level: this.level, side: 'ally', slot: index }), bonus);
+      return applyFormationBonus(buildUnit(character, { level: this.level, side: 'ally', slot: this.formationSlot(id) ?? index }), bonus);
     });
   }
 
@@ -357,7 +424,30 @@ class GameStore {
       unique.push(id);
     }
     if (!unique.includes('hero')) unique.unshift('hero');
-    this.state.squad = unique.slice(0, 5);
+    const members = unique.slice(0, 5);
+    const existing = this.state.formationSlots ?? defaultFormationSlots(this.state.squad ?? []);
+    const formationSlots = {};
+    const used = new Set();
+    for (const id of members) {
+      const position = existing[id];
+      if (Number.isInteger(position) && position >= 0 && position <= 8 && !used.has(position)) {
+        formationSlots[id] = position;
+        used.add(position);
+      }
+    }
+    for (const id of members) {
+      if (Number.isInteger(formationSlots[id])) continue;
+      const preferred = defaultFormationSlots([id])[id];
+      const position = !used.has(preferred)
+        ? preferred
+        : FORMATION_CELL_ORDER.find((slot) => !used.has(slot));
+      if (position !== undefined) {
+        formationSlots[id] = position;
+        used.add(position);
+      }
+    }
+    this.state.formationSlots = formationSlots;
+    this.state.squad = members.sort((a, b) => formationSlots[a] - formationSlots[b]);
     this.commit();
     return this.state.squad;
   }
@@ -373,21 +463,59 @@ class GameStore {
     }
     if (squad.length >= 5) return { ok: false, reason: 'A formação já tem 5 integrantes (protagonista + 4 ninjas).' };
     if (!this.isOwned(id)) return { ok: false, reason: 'Você ainda não invocou esse ninja.' };
-    squad.push(id);
-    this.setSquad(squad);
+    return this.addSquadMemberAt(id, this.firstAvailableFormationSlot());
+  }
+
+  formationSlot(id) {
+    const position = this.state?.formationSlots?.[id];
+    return Number.isInteger(position) && position >= 0 && position <= 8 ? position : null;
+  }
+
+  firstAvailableFormationSlot() {
+    const occupied = new Set(Object.values(this.state?.formationSlots ?? {}));
+    return FORMATION_CELL_ORDER.find((slot) => !occupied.has(slot)) ?? null;
+  }
+
+  addSquadMemberAt(id, position) {
+    if (!Number.isInteger(position) || position < 0 || position > 8) {
+      return { ok: false, reason: 'Escolha uma posição válida na grade 3×3.' };
+    }
+    if (!this.isOwned(id)) return { ok: false, reason: 'Você ainda não invocou esse ninja.' };
+    if (this.state.squad.includes(id)) return this.placeSquadMember(id, position);
+    if (this.state.squad.length >= 5) return { ok: false, reason: 'A formação já tem 5 integrantes (protagonista + 4 ninjas).' };
+    if (this.state.squad.some((memberId) => this.formationSlot(memberId) === position)) {
+      return { ok: false, reason: 'Essa posição já está ocupada. Selecione um integrante para trocar de célula.' };
+    }
+    this.state.squad.push(id);
+    this.state.formationSlots[id] = position;
+    this.state.squad.sort((a, b) => this.formationSlot(a) - this.formationSlot(b));
+    this.commit();
     return { ok: true, action: 'added' };
   }
 
-  /** Troca um integrante de posição na formação (ordem exibida na arena). */
+  placeSquadMember(id, position) {
+    if (!this.state.squad.includes(id)) return { ok: false, reason: 'Integrante não está na formação.' };
+    if (!Number.isInteger(position) || position < 0 || position > 8) {
+      return { ok: false, reason: 'Escolha uma posição válida na grade 3×3.' };
+    }
+    const current = this.formationSlot(id);
+    if (current === position) return { ok: true, action: 'unchanged' };
+    const occupant = this.state.squad.find((memberId) => this.formationSlot(memberId) === position);
+    if (occupant) this.state.formationSlots[occupant] = current;
+    this.state.formationSlots[id] = position;
+    this.state.squad.sort((a, b) => this.formationSlot(a) - this.formationSlot(b));
+    this.commit();
+    return { ok: true, action: occupant ? 'swapped' : 'moved' };
+  }
+
+  /** Move um integrante uma célula na ordem atual da formação, mantendo o save compatível. */
   moveSquadMember(id, direction) {
     const squad = [...this.state.squad];
     const index = squad.indexOf(id);
     const target = index + direction;
     if (index < 0) return { ok: false, reason: 'Integrante não está na formação.' };
     if (target < 0 || target >= squad.length) return { ok: false, reason: 'Já está na ponta da formação.' };
-    [squad[index], squad[target]] = [squad[target], squad[index]];
-    this.setSquad(squad);
-    return { ok: true };
+    return this.placeSquadMember(id, this.formationSlot(squad[target]));
   }
 
   /* ----- invocação (pergaminhos) ----- */
@@ -524,12 +652,13 @@ export const game = new GameStore();
 
 /** Helper de UI: cria batalha a partir de uma missão. */
 export function enemyUnitsFor(mission) {
+  const frontToBack = [2, 5, 8, 1, 4, 7, 0, 3, 6];
   return mission.enemies.map((entry, index) => {
     const character = getCharacter(entry.id);
     return buildUnit(character, {
       level: entry.level ?? mission.minLevel,
       side: 'enemy',
-      slot: index,
+      slot: frontToBack[index] ?? index % 9,
       displayName: entry.name ?? character.name,
     });
   });

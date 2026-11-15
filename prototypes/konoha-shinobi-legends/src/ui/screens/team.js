@@ -2,26 +2,42 @@
  * team.js — formação de combate, coleção de ninjas e ficha detalhada.
  */
 
-import { ROSTER, getCharacter, statsFor, STYLES, ELEMENTS, RARITIES } from '../../data/characters.js';
+import { ROSTER, getCharacter, statsFor, STYLES, ELEMENTS, RARITIES, BASIC_ATTACKS } from '../../data/characters.js';
 import { jutsusOf } from '../../data/jutsus.js';
+import { statusMeta } from '../../data/statuses.js';
 import { game } from '../../core/state.js';
+import { simulateCombo } from '../../core/combo-simulator.js';
 import { shell } from '../shell.js';
 import { sfx } from '../../core/audio.js';
 import { esc, fmt } from '../../core/utils.js';
 import { sigilAvatar, rosterCard, elementTag, styleTag, rarityTag } from '../components.js';
-import { FORMATION_ROLES, formationBonuses, roleFor } from '../../core/formation.js';
+import { FORMATION_ROLES, formationBonuses, formationLane, roleFor } from '../../core/formation.js';
 
 export function renderTeam(container, { characterId = null } = {}) {
   let selectedId = characterId && game.isOwned(characterId) ? characterId : 'hero';
+  let moveModeId = null;
+  let selectedJutsuId = null;
 
   function draw() {
     const squad = game.state.squad.filter((id) => game.isOwned(id));
     const selected = characterFor(selectedId);
-    const formationBonus = formationBonuses(squad.map((id, position) => ({
+    const members = squad.map((id) => ({
+      id,
       character: characterFor(id),
-      position,
+      position: game.formationSlot(id) ?? 4,
       level: game.level,
-    })));
+    }));
+    const formationBonus = formationBonuses(members);
+    const basic = BASIC_ATTACKS[selected.style] ?? BASIC_ATTACKS.ninjutsu;
+    const basicCombo = simulateCombo(members, selectedId, { name: basic.name, hits: 1, effect: basic.effect });
+    const availableJutsus = jutsusOf(selected);
+    const activeJutsu = availableJutsus.find((jutsu) => jutsu.id === selectedJutsuId) ?? availableJutsus[0];
+    selectedJutsuId = activeJutsu?.id ?? null;
+    const jutsuCombo = simulateCombo(members, selectedId, {
+      name: activeJutsu?.name ?? 'Sem técnica',
+      hits: activeJutsu?.hits ?? 1,
+      effect: activeJutsu?.effect,
+    });
     const bonusRows = [
       ['Vida máxima', formationBonus.hpPct, '%'],
       ['Chakra máximo', formationBonus.chakraPct, '%'],
@@ -41,7 +57,7 @@ export function renderTeam(container, { characterId = null } = {}) {
           <div>
             <span class="eyebrow">Escalação · Time 7 e aliados</span>
             <h1>Formação shinobi</h1>
-            <p>Monte uma equipe de até 5 combatentes: o protagonista mais 4 ninjas clássicos. A ordem das vagas define a posição na arena.</p>
+            <p>Monte até 5 combatentes no tabuleiro 3×3. A coluna da direita é a linha de frente e muda foco de alvo, iniciativa e sinergias.</p>
           </div>
           <div class="screen-head__stats">
             <div><b>${squad.length}/5</b><span>Em campo</span></div>
@@ -60,52 +76,78 @@ export function renderTeam(container, { characterId = null } = {}) {
                 </div>
                 <span class="chip">${squad.length} de 5</span>
               </header>
-              <div class="formation">
-                ${Array.from({ length: 5 })
-                  .map((_, index) => {
-                    const id = squad[index];
+              <div class="formation-board__caption">
+                <span>Retaguarda</span><span>Meio</span><strong>Frente · inimigo →</strong>
+              </div>
+              <div class="formation-board" role="grid" aria-label="Grade tática 3 por 3">
+                ${Array.from({ length: 9 })
+                  .map((_, slot) => {
+                    const id = squad.find((memberId) => game.formationSlot(memberId) === slot);
+                    const lane = formationLane(slot);
+                    const isMoving = moveModeId === selectedId && squad.includes(selectedId);
+                    const isRecruitTarget = !squad.includes(selectedId) && game.isOwned(selectedId);
+                    const isTarget = isMoving || (!id && isRecruitTarget);
                     if (!id) {
                       return `
-                        <div class="slot slot--empty">
-                          <span class="slot__plus">+</span>
-                          <span class="slot__label">Vaga ${index + 1}</span>
-                          <small>Escolha um ninja na coleção</small>
-                        </div>
+                        <button class="formation-cell formation-cell--empty ${isTarget ? 'is-target' : ''}" data-formation-slot="${slot}" type="button"
+                          aria-label="Posição ${slot + 1}, ${lane}${isTarget ? ', destino disponível' : ', vaga vazia'}">
+                          <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
+                          <span class="formation-cell__lane">${lane}</span>
+                          <b class="formation-cell__plus">+</b>
+                          <small>${isMoving ? 'Mover selecionado' : isRecruitTarget ? 'Alocar selecionado' : 'Vaga livre'}</small>
+                        </button>
                       `;
                     }
                     const character = characterFor(id);
                     const role = FORMATION_ROLES[roleFor(character)];
                     return `
-                      <div class="slot ${id === selectedId ? 'is-selected' : ''}" data-select="${id}">
-                        <span class="slot__index">${index + 1}</span>
-                        ${sigilAvatar(character, { size: 'md' })}
-                        <span class="slot__name">${esc(character.name)}</span>
-                        <span class="slot__role">${role.kanji} ${role.label} · ${index < 2 ? 'Frente' : 'Retaguarda'}</span>
-                        ${
-                          id === 'hero'
-                            ? '<span class="slot__fixed">obrigatório</span>'
-                            : `<button class="slot__remove" data-remove="${id}" type="button" title="Remover da formação">×</button>`
-                        }
-                        <div class="slot__move">
-                          <button data-move="${id}" data-dir="-1" type="button" title="Mover para a esquerda" ${index === 0 ? 'disabled' : ''}>‹</button>
-                          <button data-move="${id}" data-dir="1" type="button" title="Mover para a direita" ${index === squad.length - 1 ? 'disabled' : ''}>›</button>
-                        </div>
+                      <div class="formation-cell-wrap ${id === selectedId ? 'is-selected' : ''} ${isMoving && id !== selectedId ? 'is-target' : ''}">
+                        <button class="formation-cell" data-formation-slot="${slot}" data-member-id="${id}" type="button"
+                          aria-label="${esc(character.name)}, ${role.label}, ${lane}, posição ${slot + 1}">
+                          <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
+                          ${sigilAvatar(character, { size: 'sm' })}
+                          <strong>${esc(character.name)}</strong>
+                          <small>${role.kanji} ${role.label}</small>
+                          <em>${lane}</em>
+                          ${id === 'hero' ? '<span class="formation-cell__fixed">Líder</span>' : ''}
+                        </button>
+                        ${id !== 'hero' ? `<button class="formation-cell__remove" data-remove="${id}" type="button" title="Remover da formação" aria-label="Remover ${esc(character.name)}">×</button>` : ''}
                       </div>
                     `;
                   })
                   .join('')}
               </div>
+              <p class="formation-board__hint">Selecione um ninja para ver sua ficha. Use “Reposicionar” na ficha para trocar células; uma vaga vazia aloca o ninja selecionado.</p>
               <div class="formation-bonus">
                 <div class="formation-bonus__head">
                   <strong>Sinergia da formação</strong>
-                  <span>As duas primeiras vagas ficam na frente</span>
+                  <span>Bônus calculados pela função e coluna</span>
                 </div>
                 <div class="formation-bonus__chips">${bonusRows.join('') || '<span class="formation-bonus__empty">Nenhum bônus ativo</span>'}</div>
               </div>
               <p class="panel__note">
-                Vanguarda fortalece a vida e a defesa; Atacantes elevam o dano básico; Suporte amplia chakra/Guarda;
-                Controle fortalece técnicas. Perseguições continuam dependendo dos gatilhos de combo.
+                Vanguarda fortalece a vida e protege a frente; Atacante amplia dano básico; Suporte melhora chakra/Guarda;
+                Controle fortalece técnicas. As perseguições dependem dos gatilhos de Flutuação e Derrubar.
               </p>
+            </section>
+
+            <section class="panel combo-lab">
+              <header class="panel__head">
+                <div><span class="eyebrow">Planejamento tático</span><h2>Laboratório de combos</h2></div>
+                <span class="chip">${squad.length}/5 no tabuleiro</span>
+              </header>
+              <p class="panel__note">Simulação das perseguições disponíveis para o ninja selecionado. A chance do efeito inicial não é alterada; o encadeamento presume que o gatilho aconteceu.</p>
+              <div class="combo-lab__grid">
+                ${comboPanelMarkup('Combo por Ataque', basicCombo)}
+                <section class="combo-track">
+                  <label class="combo-track__select">Combo por Técnica
+                    <select data-combo-jutsu ${availableJutsus.length ? '' : 'disabled'}>
+                      ${availableJutsus.map((jutsu) => `<option value="${jutsu.id}" ${jutsu.id === activeJutsu?.id ? 'selected' : ''}>${esc(jutsu.name)}</option>`).join('')}
+                    </select>
+                  </label>
+                  ${comboStepsMarkup(jutsuCombo)}
+                </section>
+              </div>
             </section>
 
             <section class="panel">
@@ -150,37 +192,47 @@ export function renderTeam(container, { characterId = null } = {}) {
     container.querySelectorAll('[data-character]').forEach((card) => {
       card.addEventListener('click', () => {
         selectedId = card.dataset.character;
+        moveModeId = null;
         sfx.click();
-        const panel = container.querySelector('#detail-panel');
+        draw();
+      });
+    });
+
+    container.querySelectorAll('[data-formation-slot]').forEach((cell) => {
+      cell.addEventListener('click', () => {
+        const position = Number(cell.dataset.formationSlot);
         const squad = game.state.squad;
-        panel.innerHTML = detailMarkup(characterFor(selectedId), squad);
-        bindDetail();
-        container.querySelectorAll('.roster-card,.slot').forEach((el) => {
-          const id = el.dataset.character ?? el.dataset.select;
-          el.classList.toggle('is-selected', id === selectedId);
-        });
-      });
-    });
+        if (moveModeId === selectedId && squad.includes(selectedId)) {
+          const result = game.placeSquadMember(selectedId, position);
+          if (!result.ok) {
+            shell.toast(result.reason, 'warn');
+            return;
+          }
+          moveModeId = null;
+          sfx.click();
+          shell.toast(result.action === 'swapped' ? 'Posições trocadas.' : 'Integrante reposicionado.');
+          draw();
+          return;
+        }
 
-    container.querySelectorAll('[data-select]').forEach((slot) => {
-      slot.addEventListener('click', () => {
-        selectedId = slot.dataset.select;
-        const panel = container.querySelector('#detail-panel');
-        panel.innerHTML = detailMarkup(characterFor(selectedId), game.state.squad);
-        bindDetail();
-        container.querySelectorAll('.slot').forEach((el) => el.classList.toggle('is-selected', el.dataset.select === selectedId));
-      });
-    });
-
-    container.querySelectorAll('[data-move]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const result = game.moveSquadMember(button.dataset.move, Number(button.dataset.dir));
+        const memberId = cell.dataset.memberId;
+        if (memberId) {
+          selectedId = memberId;
+          moveModeId = null;
+          draw();
+          return;
+        }
+        if (squad.includes(selectedId)) {
+          shell.toast('Abra a ficha do integrante e escolha “Reposicionar” para mover uma unidade.');
+          return;
+        }
+        const result = game.addSquadMemberAt(selectedId, position);
         if (!result.ok) {
           shell.toast(result.reason, 'warn');
           return;
         }
         sfx.click();
+        shell.toast(`${characterFor(selectedId).name} ocupou a posição ${position + 1}.`);
         draw();
       });
     });
@@ -200,21 +252,32 @@ export function renderTeam(container, { characterId = null } = {}) {
       });
     });
 
+    container.querySelector('[data-combo-jutsu]')?.addEventListener('change', (event) => {
+      selectedJutsuId = event.currentTarget.value;
+      draw();
+    });
+
     bindDetail();
   }
 
   function bindDetail() {
     const action = container.querySelector('[data-squad-action]');
-    if (!action) return;
-    action.addEventListener('click', () => {
-      const id = action.dataset.squadAction;
-      const result = game.toggleSquadMember(id);
-      if (!result.ok) {
-        shell.toast(result.reason, 'warn');
-        return;
-      }
-      sfx.click();
-      shell.toast(result.action === 'added' ? `${characterFor(id).name} entrou na formação!` : `${characterFor(id).name} saiu da formação.`);
+    if (action) {
+      action.addEventListener('click', () => {
+        const id = action.dataset.squadAction;
+        const result = game.toggleSquadMember(id);
+        if (!result.ok) {
+          shell.toast(result.reason, 'warn');
+          return;
+        }
+        sfx.click();
+        shell.toast(result.action === 'added' ? `${characterFor(id).name} entrou na formação!` : `${characterFor(id).name} saiu da formação.`);
+        draw();
+      });
+    }
+
+    container.querySelector('[data-move-mode]')?.addEventListener('click', () => {
+      moveModeId = moveModeId === selectedId ? null : selectedId;
       draw();
     });
 
@@ -323,6 +386,7 @@ export function renderTeam(container, { characterId = null } = {}) {
                  </button>`
               : `<button class="btn btn--primary btn--block" disabled type="button">Invoque com um pergaminho</button>`
           }
+          ${inSquad ? '<button class="btn btn--ghost btn--block" data-move-mode type="button">Reposicionar na grade</button>' : ''}
           <button class="btn btn--ghost btn--block" data-open-jutsus="1" type="button">Ver ficha completa de combate</button>
         </div>
       </div>
@@ -374,4 +438,42 @@ export function renderTeam(container, { characterId = null } = {}) {
       `,
     });
   }
+}
+
+function comboPanelMarkup(title, combo) {
+  return `
+    <section class="combo-track">
+      <h3>${title}</h3>
+      ${comboStepsMarkup(combo)}
+    </section>
+  `;
+}
+
+function comboStepsMarkup(combo) {
+  const trigger = combo.triggerType ? statusMeta(combo.triggerType) : null;
+  const starter = `
+    <li class="combo-step combo-step--starter">
+      <span class="combo-step__number">1</span>
+      <span><strong>${esc(combo.sourceName)}</strong><small>${esc(combo.starterName)} · ${combo.starterHits} ${combo.starterHits === 1 ? 'acerto' : 'acertos'}</small></span>
+    </li>
+  `;
+  const pursuits = combo.sequence.map((step, index) => `
+    <li class="combo-step">
+      <span class="combo-step__number">${index + 2}</span>
+      <span><strong>${esc(step.name)}</strong><small>${esc(step.ability)} · ${step.hits} ${step.hits === 1 ? 'acerto' : 'acertos'} · ${statusMeta(step.triggerType).label}</small></span>
+    </li>
+  `).join('');
+  const emptyMessage = !combo.triggerType
+    ? 'Esta ação não aplica um efeito de perseguição.'
+    : !trigger?.combo
+      ? `${trigger?.label ?? 'O efeito'} não abre perseguição neste protótipo.`
+      : 'Nenhum aliado disponível possui perseguição para este gatilho.';
+  return `
+    <div class="combo-track__meta">
+      <span>${trigger ? `Gatilho: ${trigger.label}` : 'Sem gatilho de combo'}</span>
+      <span>${combo.sequence.length} ${combo.sequence.length === 1 ? 'perseguição' : 'perseguições'}</span>
+    </div>
+    <ol class="combo-sequence">${starter}${pursuits || `<li class="combo-track__empty">${emptyMessage}</li>`}</ol>
+    <div class="combo-track__total"><b>${combo.totalHits}</b><span>acertos na sequência</span></div>
+  `;
 }

@@ -322,7 +322,7 @@ export async function renderBattle(container, { missionId, navigate }) {
         resolving = resolve;
         selectedTarget = selectedTarget && battleRef.unitByUid(selectedTarget)?.alive
           ? selectedTarget
-          : (enemies.find((enemy) => enemy.alive)?.uid ?? null);
+          : battleRef.defaultTargetUid(unit);
         renderBoard();
         renderConsole(unit);
       }),
