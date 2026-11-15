@@ -232,7 +232,9 @@ export class Battle {
       unit.guard = true;
       const guardGain = 28 + (unit.teamBonus?.guardChakra ?? 0);
       unit.chakra = Math.min(unit.maxChakra, unit.chakra + guardGain);
-      await this.hooks.actionFlash(unit, 'Guarda');
+      await this.hooks.actionFlash(unit, 'Guarda', {
+        type: 'guard', element: unit.element, targetMode: 'self', targetUid: unit.uid,
+      });
       this.log(`${unit.name} assume postura defensiva e recupera ${guardGain} de chakra.`, 'info');
       this.hooks.render();
       return;
@@ -243,7 +245,9 @@ export class Battle {
       const target = this.resolveTarget(unit, action.targetUid);
       if (!target) return;
       unit.chakra = Math.min(unit.maxChakra, unit.chakra + basic.chakraGain);
-      await this.hooks.actionFlash(unit, basic.name);
+      await this.hooks.actionFlash(unit, basic.name, {
+        type: 'basic', element: unit.element, targetMode: 'enemy', targetUid: target.uid,
+      });
       this.log(`${unit.name} usa ${basic.name} em ${target.name}.`, 'basic');
       if (unit.isHero && unit.style === 'taijutsu') this.heroTaiRally(unit);
       await this.hit(unit, target, basic.mult, {
@@ -265,7 +269,20 @@ export class Battle {
         return;
       }
       unit.chakra -= cost;
-      await this.hooks.actionFlash(unit, jutsu.name);
+      const targetUid = action.targetUid ?? (
+        jutsu.target === 'self' ? unit.uid
+          : jutsu.target === 'ally' ? this.allyTarget(unit, null)?.uid
+            : jutsu.target === 'enemy' ? this.defaultTargetUid(unit) : undefined
+      );
+      await this.hooks.actionFlash(unit, jutsu.name, {
+        type: 'jutsu',
+        jutsuId: jutsu.id,
+        element: unit.element,
+        targetMode: jutsu.target,
+        targetUid,
+        hits: jutsu.hits ?? 1,
+        support: Boolean(jutsu.heal || jutsu.shield || jutsu.cleanse),
+      });
       this.log(`${unit.name} usa ${jutsu.name}!`, 'jutsu');
 
       if (unit.side === 'enemy' && this.allies.some((ally) => ally.charId === 'kakashi' && ally.alive)) {
@@ -483,6 +500,8 @@ export class Battle {
       label: options.label,
       kanji: options.kanji,
       sourceSide: attacker?.side,
+      sourceUid: attacker?.uid,
+      sourceElement: attacker?.element,
     });
 
     if (target.hp <= 0 && target.alive) {
@@ -565,6 +584,13 @@ export class Battle {
       this.comboCount += 1;
       this.bestCombo = Math.max(this.bestCombo, this.comboCount);
       const pursuit = pursuer.def.pursuit;
+
+      await this.hooks.actionFlash?.(pursuer, pursuit.name, {
+        type: 'pursuit',
+        element: pursuer.element,
+        targetMode: 'enemy',
+        targetUid: target.uid,
+      });
 
       await this.hooks.combo({
         count: this.comboCount,

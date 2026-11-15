@@ -1062,3 +1062,320 @@
     padding: 6px 10px;
   }
 }
+
+
+/* ------------------------ vfx de jutsu e perseguição ---------------------- */
+.battle-vfx,
+.battle-impact {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  border-radius: 50%;
+  color: var(--vfx-color, #c5e8ff);
+  --vfx-color: #c5e8ff;
+}
+
+.battle-vfx {
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  opacity: 0;
+  animation: battleVfxTravel var(--travel-ms, 360ms) cubic-bezier(0.2, 0.78, 0.18, 1)
+    var(--delay-ms, 0ms) both;
+}
+
+.battle-vfx::before,
+.battle-vfx::after,
+.battle-impact::before,
+.battle-impact::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+}
+
+.battle-vfx::before {
+  width: 58%;
+  height: 58%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #fff 0 8%, var(--vfx-color) 34%, transparent 76%);
+  filter: drop-shadow(0 0 10px var(--vfx-color));
+}
+
+.battle-vfx::after {
+  width: 62px;
+  height: 5px;
+  border-radius: 99px;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0deg));
+  background: linear-gradient(90deg, transparent, var(--vfx-color), #fff 68%, transparent);
+  filter: drop-shadow(0 0 7px var(--vfx-color));
+}
+
+.battle-vfx--jutsu::before {
+  width: 88%;
+  height: 88%;
+  background: radial-gradient(circle, #fff 0 7%, var(--vfx-color) 22%, color-mix(in srgb, var(--vfx-color) 48%, transparent) 52%, transparent 74%);
+}
+
+.battle-vfx--jutsu::after {
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--vfx-color) 80%, #fff);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 15px var(--vfx-color), inset 0 0 8px var(--vfx-color);
+  transform: translate(-50%, -50%);
+}
+
+.battle-vfx--pursuit::before {
+  width: 82%;
+  height: 44%;
+  border-radius: 2px;
+  clip-path: polygon(0 48%, 28% 8%, 100% 0, 72% 50%, 100% 100%, 28% 90%);
+  background: linear-gradient(90deg, #fff7cf, #ffc46c 45%, transparent);
+  filter: drop-shadow(0 0 9px #ff8d50);
+}
+
+.battle-vfx--pursuit::after {
+  width: 76px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #ff9d55, #fff0c2, transparent);
+  filter: drop-shadow(0 0 7px #ff7a45);
+}
+
+.battle-vfx--area {
+  width: 46px;
+  height: 46px;
+}
+
+.battle-vfx--fire { --vfx-color: #ff6847; }
+.battle-vfx--wind { --vfx-color: #8de7c4; }
+.battle-vfx--lightning { --vfx-color: #ffe17b; }
+.battle-vfx--earth { --vfx-color: #d9a06a; }
+.battle-vfx--water { --vfx-color: #75caff; }
+.battle-vfx--ice { --vfx-color: #a9efff; }
+.battle-vfx--yin { --vfx-color: #c3a0ff; }
+.battle-vfx--chakra { --vfx-color: #d4e4ff; }
+
+.battle-vfx--fire::before {
+  border-radius: 54% 46% 62% 38%;
+  transform: translate(-50%, -50%) rotate(35deg);
+}
+
+.battle-vfx--wind::after {
+  height: 8px;
+  border: 1px solid color-mix(in srgb, var(--vfx-color) 78%, #fff);
+  background: transparent;
+  box-shadow: 0 7px 0 -2px var(--vfx-color), 0 -7px 0 -2px var(--vfx-color);
+}
+
+.battle-vfx--lightning::before {
+  width: 55%;
+  height: 90%;
+  border-radius: 0;
+  clip-path: polygon(43% 0, 75% 0, 57% 38%, 88% 38%, 24% 100%, 41% 56%, 12% 56%);
+  background: linear-gradient(135deg, #fff, var(--vfx-color) 52%, transparent);
+}
+
+.battle-vfx--earth::before {
+  width: 62%;
+  height: 72%;
+  border-radius: 4px 50% 8px 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.battle-vfx--water::before {
+  background: radial-gradient(ellipse, #fff 0 5%, var(--vfx-color) 18%, transparent 70%);
+}
+
+.battle-vfx--water::after {
+  height: 14px;
+  border: 2px solid var(--vfx-color);
+  border-left-color: transparent;
+  border-right-color: transparent;
+  background: transparent;
+}
+
+.battle-vfx--ice::before {
+  width: 72%;
+  height: 94%;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 78% 35%, 100% 50%, 76% 63%, 50% 100%, 24% 63%, 0 50%, 23% 35%);
+  background: linear-gradient(135deg, #fff, var(--vfx-color) 54%, transparent);
+}
+
+.battle-vfx--yin::after {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--vfx-color);
+  background: transparent;
+  box-shadow: 0 0 12px var(--vfx-color), inset 0 0 9px var(--vfx-color);
+}
+
+@keyframes battleVfxTravel {
+  0% { opacity: 0; transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(0.3) rotate(-14deg); }
+  14% { opacity: 1; transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(0.92) rotate(0); }
+  80% { opacity: 0.96; transform: translate(-50%, -50%) translate3d(var(--mid-dx), var(--mid-dy), 0) scale(0.82) rotate(8deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate3d(var(--dx), var(--dy), 0) scale(1.24) rotate(15deg); }
+}
+
+.battle-impact {
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  opacity: 0;
+  animation: battleImpactBurst var(--travel-ms, 420ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.battle-impact::before {
+  width: 64%;
+  height: 64%;
+  border: 2px solid var(--vfx-color);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  box-shadow: 0 0 12px var(--vfx-color), inset 0 0 8px color-mix(in srgb, var(--vfx-color) 50%, transparent);
+}
+
+.battle-impact::after {
+  width: 76%;
+  height: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(90deg, transparent, #fff, var(--vfx-color), transparent);
+  filter: drop-shadow(0 0 5px var(--vfx-color));
+}
+
+.battle-impact--jutsu {
+  width: 64px;
+  height: 64px;
+}
+
+.battle-impact--jutsu::before {
+  border-width: 3px;
+  clip-path: polygon(50% 0, 62% 34%, 100% 50%, 62% 64%, 50% 100%, 38% 64%, 0 50%, 38% 34%);
+  border-radius: 0;
+}
+
+.battle-impact--pursuit {
+  width: 72px;
+  height: 72px;
+}
+
+.battle-impact--pursuit::before,
+.battle-impact--chain::before {
+  border-color: #ffbd72;
+  box-shadow: 0 0 16px #ff8d50, inset 0 0 10px rgba(255, 189, 114, 0.5);
+}
+
+.battle-impact--pursuit::after,
+.battle-impact--chain::after {
+  background: linear-gradient(90deg, transparent, #fff0c2, #ff9d55, transparent);
+  filter: drop-shadow(0 0 7px #ff8148);
+}
+
+.battle-impact--guard,
+.battle-impact--support,
+.battle-impact--cast {
+  width: 78px;
+  height: 78px;
+  animation-name: battleAuraPulse;
+}
+
+.battle-impact--guard {
+  width: 84px;
+  height: 84px;
+}
+
+.battle-impact--guard::before,
+.battle-impact--support::before,
+.battle-impact--cast::before {
+  width: 76%;
+  height: 76%;
+  border-width: 1px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--vfx-color) 16%, transparent), transparent 68%);
+}
+
+.battle-impact--guard::after,
+.battle-impact--support::after,
+.battle-impact--cast::after {
+  width: 92%;
+  height: 92%;
+  border: 1px dashed color-mix(in srgb, var(--vfx-color) 76%, transparent);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.battle-impact--status {
+  width: 58px;
+  height: 58px;
+}
+
+.battle-impact--chain {
+  width: 64px;
+  height: 64px;
+}
+
+@keyframes battleImpactBurst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.24) rotate(-18deg); }
+  24% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.8) rotate(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.52) rotate(28deg); }
+}
+
+@keyframes battleAuraPulse {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.58) rotate(-18deg); }
+  28% { opacity: 0.86; transform: translate(-50%, -50%) scale(1) rotate(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.28) rotate(45deg); }
+}
+
+@media (max-width: 900px) {
+  .battle-vfx { width: 30px; height: 30px; }
+  .battle-vfx--area { width: 36px; height: 36px; }
+  .battle-vfx--basic::after { width: 42px; }
+  .battle-vfx--pursuit::after { width: 54px; }
+  .battle-impact { width: 42px; height: 42px; }
+  .battle-impact--jutsu { width: 50px; height: 50px; }
+  .battle-impact--pursuit { width: 56px; height: 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-vfx,
+  .battle-impact { display: none; }
+  .unit.is-hit,
+  .unit.is-crit,
+  .unit.is-dead,
+  .unit.is-combo-hit { animation: none !important; }
+  .float-text { animation: none; opacity: 1; }
+}
+
+
+/* Impactos ancorados no selo ficam fora das barras do cartão. */
+.battle-impact { width: 42px; height: 42px; }
+.battle-impact--jutsu { width: 44px; height: 44px; }
+.battle-impact--pursuit { width: 48px; height: 48px; }
+.battle-impact--guard,
+.battle-impact--support,
+.battle-impact--cast { width: 44px; height: 44px; }
+.battle-impact--guard { width: 46px; height: 46px; }
+.battle-impact--status { width: 36px; height: 36px; }
+.battle-impact--chain { width: 42px; height: 42px; }
+
+@media (max-width: 900px) {
+  .battle-impact { width: 28px; height: 28px; }
+  .battle-impact--jutsu { width: 30px; height: 30px; }
+  .battle-impact--pursuit { width: 32px; height: 32px; }
+  .battle-impact--guard,
+  .battle-impact--support,
+  .battle-impact--cast { width: 30px; height: 30px; }
+  .battle-impact--guard { width: 32px; height: 32px; }
+  .battle-impact--status { width: 26px; height: 26px; }
+  .battle-impact--chain { width: 28px; height: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit,
+  .battle-banner,
+  .combo-banner { transition: none !important; }
+  .unit.is-active::after,
+  .log-line { animation: none !important; }
+}

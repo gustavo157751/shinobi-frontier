@@ -5,7 +5,7 @@
 - [x] Estilo escolhido altera atributos (vida, ataque, defesa, velocidade, chakra, crítico) e o conjunto de jutsus do protagonista.
 - [x] Protagonista original é salvo e permanece obrigatório na formação.
 - [x] Menu de equipe permite montar formação com até 4 ninjas clássicos além do protagonista, trocar posições na grade 3×3 e remover integrantes.
-- [x] Ninjas clássicos (Naruto, Sasuke, Sakura, Kakashi e mais 12) possuem atributos, jutsus, elemento e perseguições próprios.
+- [x] Ninjas clássicos (Naruto, Sasuke, Sakura, Kakashi e mais 18) possuem atributos, jutsus, elemento e perseguições próprios.
 - [x] Sinergia por função (Vanguarda, Atacante, Suporte, Controle) e coluna tática (retaguarda, meio, frente) concede bônus de vida, chakra, ataques, técnicas, redução de dano e chakra extra ao Guardar; valores são exibidos na tela da equipe e aplicados no combate.
 
 ## 2. Combate por turnos com chakra, velocidade e combos em cadeia
@@ -49,3 +49,14 @@
 - [x] Consultar as páginas públicas do Naruto Online e do construtor de formação do KonohaHub e usar apenas os conceitos necessários de grade, combinação de ataques/técnicas, perseguições, posicionamento e progressão.
 - [x] Implementar regras, fórmulas, interface e elenco próprios no protótipo; não copiar código, assets ou sistemas fechados das referências.
 - [x] Registrar links e limites da adaptação em `MECHANICS_REFERENCE_NOTES.md`.
+
+## 8. Expansão do elenco clássico
+- [x] Adicionar seis personagens clássicos ainda ausentes do elenco recrutável: Neji Hyuga, Choji Akimichi, Temari, Kankuro, Zabuza Momochi e Haku.
+- [x] Cada novo personagem possui atributos, raridade, elemento, dois jutsus e uma técnica de perseguição com nome, gatilhos e efeitos válidos para o motor atual de combos.
+- [x] Integrar os personagens ao catálogo de invocação, à coleção/equipe e aos papéis de formação, sem IDs duplicados nem referências de jutsu ausentes.
+- [x] Cobrir catálogo, referências dos jutsus, gatilhos de pursuit e compatibilidade com a cadeia automática/simulador por testes; registrar fontes canônicas consultadas.
+
+## 9. Efeitos visuais e animações de combate
+- [x] Jutsus recebem efeitos visuais legíveis por elemento e tipo de alvo; técnicas de área afetam visualmente cada inimigo, enquanto suporte e guarda mostram energia ao redor dos aliados.
+- [x] Perseguições mostram o ninja que dispara, o deslocamento até o alvo e impactos encadeados sincronizados com o contador de combo, sem cobrir os controles ou os indicadores de vida/chakra.
+- [x] Acertos e estados aplicados recebem feedback visual; efeitos temporários são removidos após a animação, a interface continua funcional em telas pequenas e `prefers-reduced-motion` reduz ou desativa movimento.

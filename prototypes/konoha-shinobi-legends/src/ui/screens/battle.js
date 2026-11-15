@@ -11,6 +11,7 @@ import { shell } from '../shell.js';
 import { sfx } from '../../core/audio.js';
 import { esc, sleep } from '../../core/utils.js';
 import { battleCard, rewardLine } from '../components.js';
+import { createBattleVfx } from '../battle-vfx.js';
 
 export async function renderBattle(container, { missionId, navigate }) {
   const mission = getMission(missionId);
@@ -77,12 +78,14 @@ export async function renderBattle(container, { missionId, navigate }) {
   const comboValue = container.querySelector('#combo-value');
 
   let speed = 1;
-  const wait = (ms) => sleep(Math.round(ms / speed));
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const wait = (ms) => sleep(Math.round((prefersReducedMotion ? Math.min(ms, 90) : ms) / speed));
   let activeUid = null;
   let selectedTarget = null;
   let resolving = null;
   let choosingAlly = null;
   let battleRef = null;
+  const vfx = createBattleVfx({ stageEl, fxLayer, getBattle: () => battleRef });
 
   container.querySelector('#speed-toggle').addEventListener('click', (event) => {
     speed = speed === 1 ? 2 : 1;
@@ -326,15 +329,17 @@ export async function renderBattle(container, { missionId, navigate }) {
         renderBoard();
         renderConsole(unit);
       }),
-    actionFlash: async (unit, label) => {
+    actionFlash: async (unit, label, actionMeta = {}) => {
       activeUid = unit.uid;
       updateActive();
       floatText(unit.uid, label, 'action', -26);
       if (unit.side === 'enemy') sfx.jutsu();
-      await wait(520);
+      const duration = vfx.action(unit, { ...actionMeta, durationScale: 1 / speed });
+      await wait(duration * speed);
     },
     hit: async (target, info) => {
       renderBoard();
+      vfx.impact(target, info);
       if (info.kind === 'dot' || info.kind === 'recoil') {
         floatText(target.uid, `-${info.amount}`, 'dot');
       } else if (info.crit) {
@@ -347,8 +352,7 @@ export async function renderBattle(container, { missionId, navigate }) {
         floatText(target.uid, `-${info.amount}`, 'dmg');
       }
       if (info.absorbed) floatText(target.uid, `barreira ${info.absorbed}`, 'shield', 30);
-      flashUnit(target.uid, info.crit ? 'is-crit' : 'is-hit');
-      renderBoard();
+      flashUnit(target.uid, info.crit ? 'is-crit' : info.kind === 'combo' ? 'is-combo-hit' : 'is-hit');
       await wait(info.kind === 'combo' ? 280 : 400);
     },
     heal: async (target, amount) => {
@@ -359,14 +363,15 @@ export async function renderBattle(container, { missionId, navigate }) {
       await wait(320);
     },
     statusApplied: async (target, meta) => {
+      vfx.status(target, meta);
       floatText(target.uid, `${meta.kanji} ${meta.label}`, 'status', 34);
       await wait(240);
     },
     combo: async ({ count, attacker, name }) => {
+      vfx.chain(attacker);
       showComboBanner(count, attacker.name, name);
       sfx.combo();
       updateCounters();
-      await wait(520);
     },
     defeat: async (unit) => {
       renderBoard();

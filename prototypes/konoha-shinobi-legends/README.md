@@ -16,13 +16,21 @@ com progresso salvo no `localStorage`.
 5. **Invista as recompensas**: Ryos, EXP e pergaminhos. Pergaminhos invocam novos ninjas; duplicatas
    viram Ryos e EXP.
 
+Durante a luta, jutsus têm projéteis e impactos coloridos pelo elemento; ataques em área disparam
+contra cada alvo, enquanto cura, suporte e Guarda criam auras protetoras. Pursuits exibem o avanço
+do ninja e impactos em cadeia sincronizados com o combo. As animações respeitam `prefers-reduced-motion`.
+
+O elenco recrutável contém 22 ninjas. Esta expansão acrescenta Neji, Choji, Temari, Kankuro, Zabuza
+e Haku, cada um com dois jutsus e uma perseguição que usa os gatilhos e efeitos de status já presentes
+no combate.
+
 ## Como rodar
 
 ```bash
 pnpm install
 pnpm dev      # http://localhost:3000
 pnpm build    # gera dist/ para publicar como site estático
-pnpm test     # testes unitários de formação, migração, convocação, combos e combate
+pnpm test     # testes unitários de elenco, pursuits, formação, convocação, combos, combate e VFX
 ```
 
 ## Onde alterar o balanceamento
@@ -35,6 +43,7 @@ pnpm test     # testes unitários de formação, migração, convocação, combo
 | Ataque básico por estilo (dano e chakra gerado) | `src/data/characters.js` | `BASIC_ATTACKS` |
 | Efeitos de estado (duração, dano de queimadura) | `src/data/statuses.js` | `STATUS_META` |
 | Perseguições (gatilhos de combo e multiplicador) | `src/data/characters.js` | `pursuit` de cada ninja |
+| Efeitos visuais elementais, projéteis e impactos | `src/ui/battle-vfx.js` e `src/styles/battle.css` | temas, formas e duração das animações |
 | Sinergia por função/posição e linhas da grade | `src/core/formation.js` | `ROLE_BY_ID` e fórmulas em `formationBonuses()` |
 | Simulação de cadeia e total de acertos | `src/core/combo-simulator.js` | Regras de perseguição e ordenação |
 | Missões, inimigos, custo de stamina e recompensas | `src/data/missions.js` | `MISSIONS` |
@@ -53,6 +62,7 @@ src/core/combat.js       motor de turnos, efeitos, IA e combos em cadeia
 src/core/formation.js    papéis, colunas táticas e bônus de sinergia
 src/core/combo-simulator.js simulação sem RNG de perseguições e total de acertos
 src/core/audio.js        efeitos sonoros sintetizados (WebAudio)
+src/ui/battle-vfx.js     projéteis, auras, impactos e animações de pursuit
 src/core/utils.js        funções auxiliares
 src/data/characters.js   elenco, atributos, elementos e perseguições
 src/data/jutsus.js       catálogo de técnicas
@@ -63,7 +73,7 @@ src/ui/shell.js          barra superior, menu, modais e toasts
 src/ui/components.js     fichas, avatares e barras reutilizáveis
 src/ui/screens/          criação, vila, missões, equipe, pergaminhos e batalha
 src/styles/              base, layout, telas e combate
-tests/                   testes de formação, migração, convocação, combos e combate
+tests/                   testes de elenco/pursuit, formação, migração, convocação, combos, combate e VFX
 ```
 
 ## Integração com Shinobi Frontier

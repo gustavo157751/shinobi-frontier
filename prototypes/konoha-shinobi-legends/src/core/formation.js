@@ -29,6 +29,12 @@ const ROLE_BY_ID = {
   tsunade: 'support',
   itachi: 'control',
   minato: 'striker',
+  neji: 'vanguard',
+  choji: 'vanguard',
+  temari: 'control',
+  kankuro: 'control',
+  zabuza: 'striker',
+  haku: 'control',
 };
 
 const RARITY_TIER = { comum: 1, raro: 2, epico: 3, lendario: 4 };
