@@ -59,6 +59,38 @@ export const ITEM_CATALOGUE: ItemDefinition[] = [
     rarity: 5,
     description: 'Três seixos amarrados por um fio trançado, usados por vigias da montanha.',
   },
+  {
+    code: 'VEIL_ELIXIR',
+    name: 'Elixir do Véu',
+    kind: 'CONSUMABLE',
+    rarity: 4,
+    description: 'Destilação de estilhaços do Véu que devolve fôlego em dose generosa.',
+    effect: { energy: 45 },
+  },
+  {
+    code: 'ASH_PHIAL',
+    name: 'Frasco de Cinzas',
+    kind: 'CONSUMABLE',
+    rarity: 4,
+    description: 'Cinzas seladas em vidro; ao abrir, liberam calor que reanima o corpo.',
+    effect: { energy: 60 },
+  },
+  {
+    code: 'RIVER_DRAUGHT',
+    name: 'Gole do Rio',
+    kind: 'CONSUMABLE',
+    rarity: 4,
+    description: 'Água colhida da correnteza, guardada em cantil de pedra; acalma e sustenta.',
+    effect: { energy: 50 },
+  },
+  {
+    code: 'STONE_BREW',
+    name: 'Infusão de Seixo',
+    kind: 'CONSUMABLE',
+    rarity: 5,
+    description: 'Infusão longa de seixos e ervas; o fôlego volta como se nunca tivesse ido.',
+    effect: { energy: 70 },
+  },
 ];
 
 export function findItem(code: string): ItemDefinition | undefined {
