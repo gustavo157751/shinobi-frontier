@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './dto';
 import { normalizeEmail, toPublicAccount } from './account.util';
+import { refreshEnergy } from '../character/energy';
 
 @Injectable()
 export class AuthService {
@@ -92,7 +93,7 @@ export class AuthService {
     return {
       accessToken: this.jwt.sign({ sub: user.id }),
       user: toPublicAccount(account),
-      character: user.characters[0] ?? null,
+      character: user.characters[0] ? await refreshEnergy(this.prisma, user.characters[0]) : null,
     };
   }
 
@@ -116,7 +117,7 @@ export class AuthService {
 
     return {
       user: toPublicAccount(user),
-      character: user.characters[0] ?? null,
+      character: user.characters[0] ? await refreshEnergy(this.prisma, user.characters[0]) : null,
     };
   }
 
