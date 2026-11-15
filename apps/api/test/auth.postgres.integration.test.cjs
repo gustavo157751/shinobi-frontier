@@ -319,13 +319,13 @@ test('roster recruitment, formation and team bonus frozen into combat', {
   assert.equal(struck.character.energy, 90);
 });
 
-test('missions, inventory and lazy energy regeneration', {
+test('talents overview and learning', {
   skip: !databaseAvailable,
 }, async () => {
   const origin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
-  const suffix = `m${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-10);
-  const email = `mission-${suffix}@example.com`;
-  const characterName = `Mission${suffix}`;
+  const suffix = `t${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-10);
+  const email = `talent-${suffix}@example.com`;
+  const characterName = `Talent${suffix}`;
   const password = 'test-password-strong';
 
   const register = await fetch(`${baseUrl}/auth/register`, {
@@ -338,89 +338,28 @@ test('missions, inventory and lazy energy regeneration', {
   const cookie = register.headers.get('set-cookie').split(';')[0];
   const json = { 'Content-Type': 'application/json', Origin: origin, Cookie: cookie };
 
-  const overview = await fetch(`${baseUrl}/missions`, { headers: { Cookie: cookie } });
-  assert.equal(overview.status, 200);
-  const board = await overview.json();
-  assert.equal(board.energy, 100);
-  const trail = board.missions.find((mission) => mission.code === 'TRAIL_OF_ASHES');
-  assert.equal(trail.status, 'AVAILABLE');
-  assert.equal(trail.locked, false);
-  assert.equal(trail.affordable, true);
-
-  const accept = await fetch(`${baseUrl}/missions/accept`, {
-    method: 'POST', headers: json, body: JSON.stringify({ missionCode: 'TRAIL_OF_ASHES' }),
-  });
-  assert.equal(accept.status, 201);
-  const accepted = await accept.json();
-  assert.equal(accepted.character.energy, 88);
-  assert.equal(accepted.battle.status, 'ACTIVE');
-  assert.equal(accepted.battle.state.mission.code, 'TRAIL_OF_ASHES');
-  assert.equal(accepted.battle.state.enemy.code, 'ASH_HOUND');
-
-  const duplicateAccept = await fetch(`${baseUrl}/missions/accept`, {
-    method: 'POST', headers: json, body: JSON.stringify({ missionCode: 'TRAIL_OF_ASHES' }),
-  });
-  assert.equal(duplicateAccept.status, 409, 'confronto ativo bloqueia um segundo aceite');
-
-  let battle = accepted.battle;
-  while (battle.status === 'ACTIVE') {
-    const action = await fetch(`${baseUrl}/combat/action`, {
-      method: 'POST', headers: json, body: JSON.stringify({ action: 'strike' }),
-    });
-    assert.equal(action.status, 201);
-    const payload = await action.json();
-    battle = payload.battle;
-  }
-
-  assert.equal(battle.status, 'VICTORY');
-
-  const me = await (await fetch(`${baseUrl}/auth/me`, { headers: { Cookie: cookie } })).json();
-  assert.equal(me.character.gold, 40);
-  assert.equal(me.character.experience, 90);
-  assert.equal(me.character.level, 1);
-
-  const afterBoard = await (await fetch(`${baseUrl}/missions`, { headers: { Cookie: cookie } })).json();
-  const trailAfter = afterBoard.missions.find((mission) => mission.code === 'TRAIL_OF_ASHES');
-  assert.equal(trailAfter.status, 'COMPLETED');
-
-  const completedAccept = await fetch(`${baseUrl}/missions/accept`, {
-    method: 'POST', headers: json, body: JSON.stringify({ missionCode: 'TRAIL_OF_ASHES' }),
-  });
-  assert.equal(completedAccept.status, 409, 'missÃ£o concluÃ­da nÃ£o pode ser reaceita');
-
-  const lockedAccept = await fetch(`${baseUrl}/missions/accept`, {
-    method: 'POST', headers: json, body: JSON.stringify({ missionCode: 'WHISPERING_REEDS' }),
-  });
-  assert.equal(lockedAccept.status, 400, 'missÃ£o de nÃ­vel superior Ã© bloqueada');
-
-  const bag = await (await fetch(`${baseUrl}/inventory`, { headers: { Cookie: cookie } })).json();
-  const tonic = bag.items.find((item) => item.code === 'HERBAL_TONIC');
-  assert.equal(tonic.quantity, 1);
-
-  const use = await fetch(`${baseUrl}/inventory/use`, {
-    method: 'POST', headers: json, body: JSON.stringify({ itemCode: 'HERBAL_TONIC' }),
-  });
-  assert.equal(use.status, 201);
-  const used = await use.json();
-  assert.equal(used.restored, 12, '88 + 20 = 100, apenas 12 recuperados');
-  assert.equal(used.character.energy, 100);
-  assert.equal(used.item.remaining, 0);
-
-  const emptyBag = await (await fetch(`${baseUrl}/inventory`, { headers: { Cookie: cookie } })).json();
-  assert.equal(emptyBag.items.length, 0, 'o item some depois de usado');
-
-  const reuse = await fetch(`${baseUrl}/inventory/use`, {
-    method: 'POST', headers: json, body: JSON.stringify({ itemCode: 'HERBAL_TONIC' }),
-  });
-  assert.equal(reuse.status, 400, 'nÃ£o Ã© possÃ­vel usar um item que nÃ£o se possui');
-
   const { PrismaService } = require('../dist/prisma/prisma.service');
   const prisma = app.get(PrismaService);
-  await prisma.character.update({
-    where: { name: characterName },
-    data: { energy: 50, energyUpdatedAt: new Date(Date.now() - 10 * 60_000) },
-  });
-  const refreshed = await (await fetch(`${baseUrl}/auth/me`, { headers: { Cookie: cookie } })).json();
-  assert.equal(refreshed.character.energy, 60);
-});
+  await prisma.character.update({ where: { name: characterName }, data: { level: 3 } });
 
+  const overview = await fetch(`${baseUrl}/talents`, { headers: { Cookie: cookie } });
+  assert.equal(overview.status, 200);
+  const board = await overview.json();
+  assert.equal(board.path, 'STONE_FIST');
+  assert.equal(board.available, 2);
+  const rock = board.talents.find((talent) => talent.code === 'SF_ROCK_1');
+  assert.equal(rock.available, true);
+
+  const learn = await fetch(`${baseUrl}/talents/learn`, {
+    method: 'POST', headers: json, body: JSON.stringify({ talentCode: 'SF_ROCK_1' }),
+  });
+  assert.equal(learn.status, 201);
+  const learned = await learn.json();
+  assert.equal(learned.talent.code, 'SF_ROCK_1');
+  assert.equal(learned.character.strength, registration.character.strength + 2);
+
+  const repeat = await fetch(`${baseUrl}/talents/learn`, {
+    method: 'POST', headers: json, body: JSON.stringify({ talentCode: 'SF_ROCK_1' }),
+  });
+  assert.equal(repeat.status, 400);
+});

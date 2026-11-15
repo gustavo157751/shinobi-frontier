@@ -76,6 +76,14 @@ Rotas autenticadas:
 - `GET /api/crafting` — receitas com status de bloqueio e disponibilidade.
 - `POST /api/crafting/craft` — envia `{ "recipeCode": "VEIL_ELIXIR" }`.
 
+## Talentos e especialização
+
+Cada personagem ganha um ponto de talento por nível (a partir do nível 2) e pode investi-lo na árvore do próprio caminho. As árvores vivem em `apps/api/src/talents/talent-catalogue.ts`: três degraus lineares e um degrau de especialização com duas escolhas mutuamente exclusivas. Aprender um talento aplica bônus de atributo ao personagem. O servidor valida caminho, nível, pré-requisitos, pontos disponíveis e a exclusividade da especialização.
+
+Rotas autenticadas:
+- `GET /api/talents` — pontos ganhos/gastos/disponíveis e a árvore do caminho.
+- `POST /api/talents/learn` — envia `{ "talentCode": "SF_ROCK_1" }`.
+
 ## Configuração e execução hospedada
 
 O GitHub versiona o código e executa verificações no Actions; ele não hospeda a API nem o PostgreSQL. Para usar o jogo fora do computador local, hospede o frontend, a API NestJS e um banco PostgreSQL separadamente e configure:

@@ -54,7 +54,6 @@ model Character {
   level        Int               @default(1)
   experience   Int               @default(0)
   energy       Int               @default(100)
-  energyUpdatedAt DateTime        @default(now())
   path         ShinobiPath
   gold         Int               @default(0)
   premium      Int               @default(0)
@@ -68,7 +67,7 @@ model Character {
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   roster       CharacterNinja[]
   missions     CharacterMission[]
-  items        CharacterItem[]
+  talents      CharacterTalent[]
   battles      CombatBattle[]
 
   @@index([userId])
@@ -109,16 +108,14 @@ model CharacterMission {
   @@unique([characterId, missionCode])
 }
 
-model CharacterItem {
+model CharacterTalent {
   id          String    @id @default(cuid())
   characterId String
-  itemCode    String    @db.VarChar(40)
-  quantity    Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  talentCode  String    @db.VarChar(40)
+  learnedAt   DateTime  @default(now())
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
-  @@unique([characterId, itemCode])
+  @@unique([characterId, talentCode])
   @@index([characterId])
 }
 
