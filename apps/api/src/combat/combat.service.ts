@@ -5,6 +5,7 @@ import { applyExperience } from '../character/progression';
 import { completeMission, describeRewards, failMission, MissionCharacter } from '../missions/mission-rewards';
 import { PrismaService } from '../prisma/prisma.service';
 import { loadFormationBonus } from '../roster/team-bonus';
+import { talentBonuses, mergeBonuses } from '../talents/talent-bonus';
 import { BattleState, buildBattleState, NO_TEAM, presentBattle } from './battle-state';
 
 type CombatAction = 'strike' | 'technique' | 'guard';
@@ -45,7 +46,9 @@ export class CombatService {
       const character = await refreshEnergy(tx, found);
       if (character.energy < 10) throw new BadRequestException('Você precisa de 10 pontos de energia para iniciar um confronto.');
 
-      const team = await loadFormationBonus(tx, character.id);
+      const formation = await loadFormationBonus(tx, character.id);
+      const learnedTalents = await tx.characterTalent.findMany({ where: { characterId: character.id } });
+      const team = mergeBonuses(formation, talentBonuses(learnedTalents.map((row) => row.talentCode)));
       const state = buildBattleState({
         character,
         team,

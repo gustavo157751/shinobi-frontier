@@ -9,6 +9,7 @@ import { MAX_ENERGY, refreshEnergy } from '../character/energy';
 import { buildBattleState, presentBattle } from '../combat/battle-state';
 import { PrismaService } from '../prisma/prisma.service';
 import { loadFormationBonus } from '../roster/team-bonus';
+import { talentBonuses, mergeBonuses } from '../talents/talent-bonus';
 import { findItem } from '../inventory/item-catalogue';
 import { findMission, MISSION_CATALOGUE, MissionDefinition } from './mission-catalogue';
 
@@ -86,7 +87,9 @@ export class MissionsService {
         );
       }
 
-      const team = await loadFormationBonus(tx, character.id);
+      const formation = await loadFormationBonus(tx, character.id);
+      const learnedTalents = await tx.characterTalent.findMany({ where: { characterId: character.id } });
+      const team = mergeBonuses(formation, talentBonuses(learnedTalents.map((row) => row.talentCode)));
       const state = buildBattleState({
         character,
         team,
