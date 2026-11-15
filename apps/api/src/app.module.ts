@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { CombatModule } from './combat/combat.module';
 import { RosterModule } from './roster/roster.module';
+import { MissionsModule } from './missions/missions.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { CraftingModule } from './crafting/crafting.module';
 import { TalentsModule } from './talents/talents.module';
 @Module({
  imports: [
@@ -21,6 +24,9 @@ import { TalentsModule } from './talents/talents.module';
   RealtimeModule,
   RosterModule,
   CombatModule,
+  MissionsModule,
+  InventoryModule,
+  CraftingModule,
   TalentsModule,
  ],
  controllers: [HealthController],
