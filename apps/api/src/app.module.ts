@@ -11,6 +11,7 @@ import { RosterModule } from './roster/roster.module';
 import { MissionsModule } from './missions/missions.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CraftingModule } from './crafting/crafting.module';
+import { TalentsModule } from './talents/talents.module';
 @Module({
  imports: [
   ConfigModule.forRoot({
@@ -26,6 +27,7 @@ import { CraftingModule } from './crafting/crafting.module';
   MissionsModule,
   InventoryModule,
   CraftingModule,
+  TalentsModule,
  ],
  controllers: [HealthController],
 })

@@ -69,6 +69,7 @@ model Character {
   roster       CharacterNinja[]
   missions     CharacterMission[]
   items        CharacterItem[]
+  talents      CharacterTalent[]
   battles      CombatBattle[]
 
   @@index([userId])
@@ -119,6 +120,17 @@ model CharacterItem {
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, itemCode])
+  @@index([characterId])
+}
+
+model CharacterTalent {
+  id          String    @id @default(cuid())
+  characterId String
+  talentCode  String    @db.VarChar(40)
+  learnedAt   DateTime  @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, talentCode])
   @@index([characterId])
 }
 
