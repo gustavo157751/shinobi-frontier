@@ -119,6 +119,7 @@ function createStore(overrides = {}) {
       },
     },
     characterNinja: { findMany: async () => [] },
+    characterTalent: { findMany: async () => [] },
   };
 
   return { state, prisma };
