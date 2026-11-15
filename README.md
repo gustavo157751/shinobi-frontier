@@ -68,6 +68,14 @@ As missões usam a formação ativa no momento do aceite: o bônus do esquadrão
 
 As rotas de jogo autenticadas usam um cookie de sessão `HttpOnly`; o navegador envia esse cookie automaticamente. O frontend não persiste JWT nem personagem em `localStorage`. `GET /api/auth/me` restaura a sessão e carrega o personagem do banco; `POST /api/auth/logout` encerra a sessão no navegador.
 
+## Forja (crafting)
+
+A oficina transforma materiais coletados em missões em consumíveis mais potentes. As receitas vivem em `apps/api/src/crafting/recipe-catalogue.ts` e o servidor valida nível, saldo em ryō e estoque antes de consumir qualquer insumo. Receitas atuais: Elixir do Véu (2 Estilhaços do Véu), Frasco de Cinzas (2 Selos de Cinzas), Gole do Rio (2 Pérolas do Rio) e Infusão de Seixo (3 Amuletos de Seixo).
+
+Rotas autenticadas:
+- `GET /api/crafting` — receitas com status de bloqueio e disponibilidade.
+- `POST /api/crafting/craft` — envia `{ "recipeCode": "VEIL_ELIXIR" }`.
+
 ## Configuração e execução hospedada
 
 O GitHub versiona o código e executa verificações no Actions; ele não hospeda a API nem o PostgreSQL. Para usar o jogo fora do computador local, hospede o frontend, a API NestJS e um banco PostgreSQL separadamente e configure:
