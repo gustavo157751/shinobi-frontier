@@ -172,6 +172,7 @@ class Shell {
 
   setActiveTab(tab) {
     this.activeTab = tab;
+    this.root.classList.toggle('is-village-hub', tab === 'vila' && !this.battleMode);
     this.root.querySelectorAll('.rail__item').forEach((item) => {
       item.classList.toggle('is-active', item.dataset.nav === tab);
     });
@@ -186,6 +187,10 @@ class Shell {
   setBattleMode(enabled) {
     this.battleMode = enabled;
     this.root.classList.toggle('is-battle', enabled);
+    this.root.classList.toggle(
+      'is-village-hub',
+      !enabled && this.activeTab === 'vila' && !this.root.classList.contains('is-onboarding'),
+    );
     this.navEl.querySelectorAll('.rail__item').forEach((item) => {
       item.disabled = enabled;
       item.classList.toggle('is-disabled', enabled);

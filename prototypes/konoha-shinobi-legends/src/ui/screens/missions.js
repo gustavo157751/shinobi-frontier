@@ -21,7 +21,7 @@ export function suggestNextMission() {
 }
 
 export function renderMissions(container, { navigate, focusMission }) {
-  const initial = focusMission ?? null;
+  let initial = focusMission ?? null;
   let activeRank = initial?.rank ?? suggestNextMission()?.rank ?? 'D';
 
   function draw() {

@@ -1,5 +1,5 @@
 /**
- * village.js — painel principal em Konoha: nível, equipe, treino e atalhos.
+ * village.js — hub de exploração de Konoha, com dados reais do save e atalhos funcionais.
  */
 
 import { game, expToNext, TRAIN_COST, MEDITATE_COST, MEDITATE_STAMINA } from '../../core/state.js';
@@ -16,197 +16,150 @@ export function renderVillage(container, { navigate }) {
   const hero = game.hero;
   const stats = game.heroStats();
   const nextMission = suggestNextMission();
+  const rankMeta = nextMission ? RANKS[nextMission.rank] : null;
+  const squad = game.squadCharacters();
   const completed = Object.keys(state.missions).length;
-  const colOpacity = Math.round((state.ninjas.length / ROSTER.length) * 100);
+  const expGoal = expToNext(state.player.level);
+  const expPercent = Math.min(100, (state.player.exp / expGoal) * 100);
+  const scrollCount = state.scrolls.comum + state.scrolls.prata + state.scrolls.ouro;
+  const briefing = nextMission?.brief?.[0];
+  const travelTarget = nextMission?.place ?? 'Vila da Folha';
+  const totalMissions = MISSIONS.length;
+  const rosterSize = ROSTER.length;
+
+  const missionPanel = nextMission
+    ? `
+      <article class="hub-panel hub-quest" style="--rank-color:${rankMeta.color}" aria-labelledby="hub-quest-title">
+        <header class="hub-panel__head">
+          <div>
+            <span class="eyebrow">Quadro de missões</span>
+            <h2 id="hub-quest-title">Objetivo prioritário</h2>
+          </div>
+          <span class="hub-quest__rank" aria-label="Rank ${esc(nextMission.rank)}">${esc(nextMission.rank)}</span>
+        </header>
+        <div class="hub-quest__body">
+          <span class="hub-quest__place">${esc(nextMission.place)}</span>
+          <h3>${esc(nextMission.name)}</h3>
+          <p class="hub-quest__objective">${esc(nextMission.objective)}</p>
+        </div>
+        <div class="hub-quest__meta">
+          <span>${completed} / ${totalMissions} missões</span>
+          <span>Equipe: ${squad.length} / 5</span>
+        </div>
+        <div class="hub-quest__rewards">${rewardLine(nextMission.rewards)}</div>
+        <button class="btn btn--primary hub-quest__button" data-next-mission="${esc(nextMission.id)}" type="button">
+          Abrir briefing <span aria-hidden="true">↗</span>
+        </button>
+      </article>
+    `
+    : `
+      <article class="hub-panel hub-quest hub-quest--complete" aria-labelledby="hub-quest-title">
+        <header class="hub-panel__head">
+          <div>
+            <span class="eyebrow">Quadro de missões</span>
+            <h2 id="hub-quest-title">Campanha concluída</h2>
+          </div>
+          <span class="hub-quest__rank" aria-hidden="true">完</span>
+        </header>
+        <div class="hub-quest__body">
+          <span class="hub-quest__place">Vila da Folha</span>
+          <h3>Konoha está em paz… por enquanto.</h3>
+          <p class="hub-quest__objective">Reveja os contratos concluídos ou retorne às missões de Rank S para buscar recompensas.</p>
+        </div>
+        <div class="hub-quest__meta"><span>${completed} / ${totalMissions} missões</span></div>
+        <button class="btn btn--ghost hub-quest__button" data-nav="missoes" type="button">Rever missões</button>
+      </article>
+    `;
 
   container.innerHTML = `
-    <section class="village">
-      <div class="village__hero" style="background-image:url('/assets/village.webp')">
-        <div class="village__veil"></div>
-        <div class="village__hero-inner">
-          <div class="village__greeting">
-            <span class="eyebrow">Konoha · ${greeting()} </span>
-            <h1>${state.stats.battles > 0 ? 'Bem-vindo de volta' : 'Bem-vindo'}, <em>${esc(state.player.name)}</em>.</h1>
-            <p>
-              ${hero.label ?? hero.title} · Nível ${state.player.level} · ${stats.hp} de vida ·
-              ${state.stats.victories} vitórias registradas.
-            </p>
-          </div>
+    <section class="village-hub" aria-label="Hub da Vila da Folha">
+      <div class="village-hub__scene" aria-hidden="true"></div>
+      <div class="village-hub__shade" aria-hidden="true"></div>
 
-          <div class="level-card">
-            <div class="level-card__top">
-              <span class="level-card__badge">Nv. ${state.player.level}</span>
-              <span class="level-card__exp">${state.player.exp} / ${expToNext(state.player.level)} EXP</span>
-            </div>
-            <div class="level-card__bar">
-              <i style="width:${Math.min(100, (state.player.exp / expToNext(state.player.level)) * 100)}%"></i>
-            </div>
-            <p class="level-card__hint">Próximo nível: +vida máxima, +chakra e +stamina.</p>
-          </div>
+      <header class="village-hub__location">
+        <span class="eyebrow">Konoha · ${greeting()}</span>
+        <h1>Vila da Folha</h1>
+        <p>${esc(hero.label ?? hero.title)} · ${fmt(stats.hp)} de vida · ${fmt(state.stats.victories)} vitórias</p>
+        <div class="hub-progress" aria-label="Experiência até o próximo nível">
+          <div class="hub-progress__labels"><span>Nv. ${state.player.level}</span><span>${fmt(state.player.exp)} / ${fmt(expGoal)} EXP</span></div>
+          <span class="hub-progress__track"><i style="width:${expPercent}%"></i></span>
         </div>
+      </header>
+
+      <nav class="village-hub__shortcuts" aria-label="Atalhos da vila">
+        <button class="hub-shortcut" data-nav="missoes" type="button" aria-label="Abrir missões">
+          <span class="hub-shortcut__icon" aria-hidden="true">巻</span><span>Missões</span>
+        </button>
+        <button class="hub-shortcut" data-nav="equipe" type="button" aria-label="Gerenciar equipe">
+          <span class="hub-shortcut__icon" aria-hidden="true">組</span><span>Equipe</span>
+        </button>
+        <button class="hub-shortcut" data-nav="pergaminhos" type="button" aria-label="Abrir pergaminhos">
+          <span class="hub-shortcut__icon" aria-hidden="true">召</span><span>Pergaminhos <small>${fmt(scrollCount)}</small></span>
+        </button>
+        <button class="hub-shortcut" data-hub-action="train" type="button" aria-label="Treinar por ${TRAIN_COST} de chakra">
+          <span class="hub-shortcut__icon" aria-hidden="true">修</span><span>Treinar</span>
+        </button>
+        <button class="hub-shortcut" data-hub-action="meditate" type="button" aria-label="Meditar e recuperar stamina">
+          <span class="hub-shortcut__icon" aria-hidden="true">禅</span><span>Meditar</span>
+        </button>
+      </nav>
+
+      ${nextMission ? `
+        <button class="village-hub__mission-marker" data-next-mission="${esc(nextMission.id)}" type="button" aria-label="Abrir briefing da missão ${esc(nextMission.name)}">
+          <span class="hub-marker__seal" aria-hidden="true">!</span>
+          <span class="hub-marker__label">Nova missão<small>${esc(nextMission.place)}</small></span>
+        </button>
+      ` : ''}
+
+      <aside class="village-hub__sidebar" aria-label="Mapa e missões">
+        <section class="hub-panel hub-map" aria-labelledby="hub-map-title">
+          <header class="hub-panel__head">
+            <div><span class="eyebrow">Orientação</span><h2 id="hub-map-title">Mapa da região</h2></div>
+            <span class="hub-map__compass" aria-hidden="true">北</span>
+          </header>
+          <div class="hub-map__chart" role="img" aria-label="Mapa esquemático da Vila da Folha e da rota sugerida; mapa ilustrativo, sem viagem interativa.">
+            <svg viewBox="0 0 320 112" preserveAspectRatio="none" aria-hidden="true">
+              <path class="hub-map__land" d="M0 17 34 4 71 16 101 7 131 20 165 8 196 19 228 6 263 15 292 4 320 14V112H0Z" />
+              <path class="hub-map__river" d="M-10 93 C28 83 34 61 72 64S112 91 145 78 187 39 218 45s42 30 71 17 36-26 52-28" />
+              <path class="hub-map__road" d="M38 92 C61 76 82 87 103 69s34-29 60-23 31 25 51 13 38-33 77-24" />
+              <path class="hub-map__route" d="M48 82 C83 80 91 65 113 63S149 76 178 57 217 39 273 31" />
+              <circle class="hub-map__dot" cx="48" cy="82" r="5" />
+              <circle class="hub-map__destination" cx="273" cy="31" r="5" />
+              <circle class="hub-map__landmark" cx="145" cy="27" r="3" />
+              <circle class="hub-map__landmark" cx="233" cy="83" r="3" />
+            </svg>
+            <span class="hub-map__tag hub-map__tag--home">Konoha</span>
+            <span class="hub-map__tag hub-map__tag--target">Rota</span>
+          </div>
+          <p class="hub-map__route-label"><span>Rota em destaque</span><strong>${esc(travelTarget)}</strong></p>
+        </section>
+
+        ${missionPanel}
+      </aside>
+
+      <div class="village-hub__left-tools">
+        <section class="hub-feed" aria-label="Comunicado da missão">
+          <span class="hub-feed__seal" aria-hidden="true">話</span>
+          <div><span class="eyebrow">${esc(briefing?.who ?? 'Comunicado de Konoha')}</span>
+            <p>${esc(briefing?.text ?? 'A equipe está pronta. Consulte o quadro para escolher uma nova missão.')}</p>
+          </div>
+        </section>
+        <section class="hub-party" aria-label="Equipe ativa">
+          <div class="hub-party__head"><span>Equipe</span><b>${squad.length} / 5</b></div>
+          <div class="hub-party__members">
+            ${squad.map((character) => `
+              <button class="hub-party__member" data-open-character="${esc(character.id)}" type="button" aria-label="Abrir equipe e ver ${esc(character.name)}" title="${esc(character.name)}">
+                ${sigilAvatar(character, { size: 'xs' })}
+              </button>
+            `).join('')}
+          </div>
+        </section>
       </div>
 
-      <div class="village__grid">
-        <div class="village__main">
-          ${
-            nextMission
-              ? `
-              <article class="next-mission" style="--rank-color:${RANKS[nextMission.rank].color}">
-                <header class="next-mission__head">
-                  <span class="rank-stamp">${nextMission.rank}</span>
-                  <div>
-                    <span class="eyebrow">Próxima missão sugerida</span>
-                    <h2>${esc(nextMission.name)}</h2>
-                    <p>${esc(nextMission.place)} · ${esc(nextMission.objective)}</p>
-                  </div>
-                </header>
-                <div class="next-mission__foot">
-                  <div class="next-mission__rewards">${rewardLine(nextMission.rewards)}</div>
-                  <button class="btn btn--primary" data-next-mission="${nextMission.id}" type="button">
-                    Abrir briefing
-                  </button>
-                </div>
-              </article>
-            `
-              : `
-              <article class="next-mission next-mission--done">
-                <header class="next-mission__head">
-                  <span class="rank-stamp">完</span>
-                  <div>
-                    <span class="eyebrow">Campanha concluída</span>
-                    <h2>Konoha está em paz… por enquanto.</h2>
-                    <p>Você venceu todas as missões disponíveis. Refaça as de Rank S para farmar Ouro e pergaminhos.</p>
-                  </div>
-                </header>
-              </article>
-            `
-          }
-
-          <section class="panel">
-            <header class="panel__head">
-              <div>
-                <span class="eyebrow">Formação ativa</span>
-                <h2>Sua equipe</h2>
-              </div>
-              <button class="btn btn--ghost btn--sm" data-nav="equipe" type="button">Gerenciar equipe</button>
-            </header>
-            <div class="squad-strip">
-              ${game
-                .squadCharacters()
-                .map(
-                  (character) => `
-                  <button class="squad-chip" data-open-character="${character.id}" type="button">
-                    ${sigilAvatar(character, { size: 'sm' })}
-                    <span class="squad-chip__name">${esc(character.name)}</span>
-                    <span class="squad-chip__meta">${character.isHero ? 'Protagonista' : `Nv. ${state.player.level}`}</span>
-                  </button>
-                `,
-                )
-                .join('')}
-              ${Array.from({ length: Math.max(0, 5 - game.squadCharacters().length) })
-                .map(() => '<div class="squad-chip squad-chip--empty"><span>+ vaga livre</span></div>')
-                .join('')}
-            </div>
-            <p class="panel__note">
-              Formação de até 5 combatentes: o protagonista é obrigatório e você pode escalar até 4 ninjas clássicos.
-            </p>
-          </section>
-
-          <section class="panel">
-            <header class="panel__head">
-              <div>
-                <span class="eyebrow">Mural de avisos</span>
-                <h2>Do escritório da Hokage</h2>
-              </div>
-            </header>
-            <div class="bounties">
-              <div class="bounty">
-                <span class="bounty__kanji">浮</span>
-                <div>
-                  <strong>Combo em cadeia</strong>
-                  <p>Flutuação e Derrubar abrem perseguição automática. Monte a equipe com gatilhos diferentes para encadear mais golpes.</p>
-                </div>
-              </div>
-              <div class="bounty">
-                <span class="bounty__kanji">気</span>
-                <div>
-                  <strong>Gerencie o chakra</strong>
-                  <p>Ataques básicos geram chakra; jutsus caros podem ficar sem energia. Alterne básicos e técnicas.</p>
-                </div>
-              </div>
-              <div class="bounty">
-                <span class="bounty__kanji">巻</span>
-                <div>
-                  <strong>Pergaminhos raros</strong>
-                  <p>Missões Rank A e S rendem pergaminhos dourados, com chance de ninjas lendários.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <aside class="village__side">
-          <section class="panel panel--compact">
-            <header class="panel__head">
-              <div>
-                <span class="eyebrow">Entre missões</span>
-                <h2>Ações da vila</h2>
-              </div>
-            </header>
-            <div class="action-stack">
-              <button class="action-card" id="action-train" type="button">
-                <span class="action-card__kanji">修</span>
-                <div>
-                  <strong>Treinar</strong>
-                  <p>Gasta ${TRAIN_COST} de chakra e concede EXP instantânea.</p>
-                </div>
-                <span class="action-card__cost">${TRAIN_COST} 気</span>
-              </button>
-              <button class="action-card" id="action-meditate" type="button">
-                <span class="action-card__kanji">禅</span>
-                <div>
-                  <strong>Meditar</strong>
-                  <p>Converte ${MEDITATE_COST} de chakra em +${MEDITATE_STAMINA} de stamina.</p>
-                </div>
-                <span class="action-card__cost">${MEDITATE_COST} 気</span>
-              </button>
-              <button class="action-card" data-nav="pergaminhos" type="button">
-                <span class="action-card__kanji">召</span>
-                <div>
-                  <strong>Invocar ninja</strong>
-                  <p>Use seus pergaminhos para desbloquear novos combatentes.</p>
-                </div>
-                <span class="action-card__cost">${state.scrolls.comum + state.scrolls.prata + state.scrolls.ouro} 巻</span>
-              </button>
-            </div>
-          </section>
-
-          <section class="panel panel--compact">
-            <header class="panel__head">
-              <div>
-                <span class="eyebrow">Registro ninja</span>
-                <h2>Progresso</h2>
-              </div>
-            </header>
-            <dl class="stat-list">
-              <div><dt>Missões concluídas</dt><dd>${completed} / ${MISSIONS.length}</dd></div>
-              <div><dt>Batalhas</dt><dd>${state.stats.victories} / ${state.stats.battles}</dd></div>
-              <div><dt>Perseguições</dt><dd>${state.stats.combos}</dd></div>
-              <div><dt>Ninjas na equipe</dt><dd>${state.ninjas.length} / ${ROSTER.length}</dd></div>
-            </dl>
-            <div class="collection-bar" title="Coleção de ninjas">
-              <i style="width:${colOpacity}%"></i>
-              <span>${state.ninjas.length} de ${ROSTER.length} ninjas invocados</span>
-            </div>
-          </section>
-
-          <section class="panel panel--compact panel--quote">
-            <blockquote>
-              “${esc(nextMission?.brief?.[0]?.text ?? 'Um ninja não mede força pela vitória, mas pelo que protege.')}”
-            </blockquote>
-            <cite>${esc(nextMission?.brief?.[0]?.who ?? 'Kakashi')}</cite>
-          </section>
-        </aside>
+      <div class="village-hub__record" aria-label="Resumo do progresso">
+        <span><b>${fmt(completed)}</b> missões</span><i aria-hidden="true"></i>
+        <span><b>${fmt(state.stats.combos)}</b> perseguições</span><i aria-hidden="true"></i>
+        <span><b>${fmt(state.ninjas.length)} / ${fmt(rosterSize)}</b> ninjas</span>
       </div>
     </section>
   `;
@@ -223,7 +176,13 @@ export function renderVillage(container, { navigate }) {
     button.addEventListener('click', () => navigate('missoes', { missionId: button.dataset.nextMission }));
   });
 
-  container.querySelector('#action-train').addEventListener('click', () => {
+  container.querySelectorAll('[data-hub-action]').forEach((button) => {
+    button.addEventListener('click', () => runHubAction(button.dataset.hubAction));
+  });
+}
+
+function runHubAction(action) {
+  if (action === 'train') {
     const result = game.train();
     if (!result.ok) {
       shell.toast(result.reason, 'warn');
@@ -233,10 +192,7 @@ export function renderVillage(container, { navigate }) {
     shell.refreshTopbar();
     shell.toast(`Treino concluído: +${result.exp} EXP`, 'success');
     if (result.leveledUp) shell.toast(`Nível ${result.newLevel}! Recursos restaurados.`, 'success');
-    renderVillage(container, { navigate });
-  });
-
-  container.querySelector('#action-meditate').addEventListener('click', () => {
+  } else if (action === 'meditate') {
     const result = game.meditate();
     if (!result.ok) {
       shell.toast(result.reason, 'warn');
@@ -245,8 +201,11 @@ export function renderVillage(container, { navigate }) {
     sfx.heal();
     shell.refreshTopbar();
     shell.toast(`Meditação: +${result.stamina} de stamina`, 'success');
-    renderVillage(container, { navigate });
-  });
+  } else {
+    return;
+  }
+
+  renderVillage(shell.screenEl, { navigate: shell.onNavigate });
 }
 
 function greeting() {

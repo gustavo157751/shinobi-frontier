@@ -60,3 +60,10 @@
 - [x] Jutsus recebem efeitos visuais legíveis por elemento e tipo de alvo; técnicas de área afetam visualmente cada inimigo, enquanto suporte e guarda mostram energia ao redor dos aliados.
 - [x] Perseguições mostram o ninja que dispara, o deslocamento até o alvo e impactos encadeados sincronizados com o contador de combo, sem cobrir os controles ou os indicadores de vida/chakra.
 - [x] Acertos e estados aplicados recebem feedback visual; efeitos temporários são removidos após a animação, a interface continua funcional em telas pequenas e `prefers-reduced-motion` reduz ou desativa movimento.
+
+## 10. Hub da Vila inspirado no layout de referência
+- [x] Pesquise o layout do Naruto Online e use a imagem de referência anexada pelo usuário para orientar a composição visual, sem embutir a captura dentro do jogo.
+- [x] Reorganize a tela inicial da Vila como hub de exploração: HUD de jogador e recursos no topo; atalhos dos sistemas já existentes; cenário amplo ao centro; mapa e lista/briefing da próxima missão à direita; feed de avisos à esquerda; navegação principal na base.
+- [x] Mantenha os dados do HUD sincronizados com o save atual e conecte cada botão a uma tela/ação existente; o briefing mostrado no painel abre a missão correta, e elementos puramente decorativos são identificados como tal.
+- [x] Reflow para telas pequenas sem rolagem horizontal nem sobreposição de controles; a navegação inferior e os painéis continuam legíveis, operáveis por toque e teclado, e respeitam `prefers-reduced-motion`.
+- [x] Use cenário original ou assets já presentes; não copie a captura, logotipo, personagens desenhados ou arquivos oficiais do Naruto Online.

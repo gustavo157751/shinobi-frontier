@@ -16,6 +16,14 @@ com progresso salvo no `localStorage`.
 5. **Invista as recompensas**: Ryos, EXP e pergaminhos. Pergaminhos invocam novos ninjas; duplicatas
    viram Ryos e EXP.
 
+## Hub de exploração da Vila
+
+A tela da Vila foi reorganizada como um hub panorâmico: perfil e recursos no topo, atalhos para os
+sistemas existentes, paisagem original ao centro, mapa ilustrativo e próxima missão à direita,
+comunicado e equipe no canto inferior e navegação no rodapé. O cartão prioritário abre o briefing
+real da missão. Em telas a partir de 320 px, os cinco atalhos se refluem sem rolagem horizontal; a
+coluna de mapa e missão pode rolar verticalmente, mantendo os controles inferiores acessíveis.
+
 Durante a luta, jutsus têm projéteis e impactos coloridos pelo elemento; ataques em área disparam
 contra cada alvo, enquanto cura, suporte e Guarda criam auras protetoras. Pursuits exibem o avanço
 do ninja e impactos em cadeia sincronizados com o combo. As animações respeitam `prefers-reduced-motion`.
