@@ -4,6 +4,7 @@
  */
 
 import { ELEMENTS, RARITIES, STYLES } from '../data/characters.js';
+import { CHARACTER_ART } from '../data/character-art.js';
 import { STATUS_META, statusMeta } from '../data/statuses.js';
 import { esc, fmt } from '../core/utils.js';
 
@@ -17,6 +18,19 @@ export function sigilAvatar(character, { size = 'md', dim = false, extraClass = 
       <span class="sigil__ring"></span>
       <span class="sigil__element" title="${esc(element.label)}">${element.kanji}</span>
     </div>
+  `;
+}
+
+/** Retrato gerado individualmente; o selo existente fica disponível como fallback. */
+export function characterPortrait(character, { size = 'md', dim = false, extraClass = '' } = {}) {
+  const element = ELEMENTS[character.element] ?? ELEMENTS.vento;
+  const src = CHARACTER_ART[character.id];
+  const sigilSize = size === 'hero' ? 'xl' : size === 'formation' ? 'md' : size === 'small' ? 'sm' : 'lg';
+  return `
+    <span class="character-portrait character-portrait--${size} ${src ? 'has-art' : ''} ${dim ? 'character-portrait--dim' : ''} ${extraClass}" style="--portrait-color:${element.color}" aria-hidden="true">
+      ${src ? `<img src="${src}" alt="" loading="lazy" decoding="async">` : ''}
+      <span class="character-portrait__fallback">${sigilAvatar(character, { size: sigilSize, dim })}</span>
+    </span>
   `;
 }
 
@@ -52,10 +66,12 @@ export function rosterCard(
   { owned = false, level = 1, inSquad = false, isHero = false, stats = null, selected = false } = {},
 ) {
   const rarity = character.rarity ?? (isHero ? 'lendario' : 'comum');
+  const searchText = `${character.name} ${character.title ?? ''}`.toLocaleLowerCase('pt-BR');
   return `
     <button class="roster-card ${owned ? '' : 'roster-card--locked'} ${inSquad ? 'roster-card--active' : ''} ${selected ? 'is-selected' : ''}"
-      data-character="${esc(character.id)}" type="button">
-      ${sigilAvatar(character, { size: 'lg', dim: !owned })}
+      data-character="${esc(character.id)}" data-owned="${owned ? 'true' : 'false'}" data-rarity="${esc(rarity)}"
+      data-element="${esc(character.element)}" data-search="${esc(searchText)}" type="button">
+      ${characterPortrait(character, { size: 'card', dim: !owned })}
       <div class="roster-card__body">
         <div class="roster-card__name">${esc(character.name)}${isHero ? '<span class="roster-card__hero">PROTAGONISTA</span>' : ''}</div>
         <div class="roster-card__title">${esc(character.title ?? '')}</div>

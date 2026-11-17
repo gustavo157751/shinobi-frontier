@@ -99,3 +99,10 @@ respectivos autores; arte e código são originais.
 ## Referências de mecânicas
 
 A formação 3×3 e a apresentação separada de combos por ataque/técnica foram inspiradas na ferramenta pública do [KonohaHub](https://konohahub.net/formation). A progressão e a ênfase em sinergia, perseguição, posicionamento e temporização foram conferidas na documentação pública do [Naruto Online](https://naruto.narutowebgame.com/en/strategy/tutorial/how_to_level_up_and_get_stronger_in_naruto_online) e em guias públicos da comunidade. As regras, fórmulas, elenco e interface deste protótipo foram implementados para o jogo local; não foram copiados assets ou sistemas fechados. Notas e links: [MECHANICS_REFERENCE_NOTES.md](./MECHANICS_REFERENCE_NOTES.md).
+
+
+## Formação e coleção de ninjas
+
+A tela **Equipe** foi redesenhada em três regiões: elenco escalado à esquerda, tabuleiro tático 3×3 no centro e coleção pesquisável à direita, com filtros por disponibilidade, raridade e elemento. A equipe continua sendo o save local atual (protagonista obrigatório e até quatro aliados); remoção, alocação, reposicionamento, sinergias e simulador de combos preservam as regras já existentes.
+
+Os cartões, posições ocupadas e ficha do personagem mostram retratos originais associados por ID em `src/data/character-art.js`. O selo/kanji permanece como fallback caso o carregamento da imagem falhe. Busca e filtros funcionam por toque e teclado, e a composição se reorganiza em telas estreitas sem rolagem horizontal. A referência visual e as fontes consultadas estão documentadas em `TEAM_SCREEN_RESEARCH_NOTES.md`.

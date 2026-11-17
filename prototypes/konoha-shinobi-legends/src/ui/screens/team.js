@@ -10,13 +10,17 @@ import { simulateCombo } from '../../core/combo-simulator.js';
 import { shell } from '../shell.js';
 import { sfx } from '../../core/audio.js';
 import { esc, fmt } from '../../core/utils.js';
-import { sigilAvatar, rosterCard, elementTag, styleTag, rarityTag } from '../components.js';
+import { characterPortrait, rosterCard, elementTag, styleTag, rarityTag } from '../components.js';
 import { FORMATION_ROLES, formationBonuses, formationLane, roleFor } from '../../core/formation.js';
 
 export function renderTeam(container, { characterId = null } = {}) {
   let selectedId = characterId && game.isOwned(characterId) ? characterId : 'hero';
   let moveModeId = null;
   let selectedJutsuId = null;
+  let collectionSearch = '';
+  let ownedFilter = 'all';
+  let rarityFilter = 'all';
+  let elementFilter = 'all';
 
   function draw() {
     const squad = game.state.squad.filter((id) => game.isOwned(id));
@@ -52,91 +56,121 @@ export function renderTeam(container, { characterId = null } = {}) {
     }
 
     container.innerHTML = `
-      <section class="team-screen">
-        <header class="screen-head">
+      <section class="team-screen team-screen--reference">
+        <header class="screen-head team-screen__head">
           <div>
-            <span class="eyebrow">Escalação · Time 7 e aliados</span>
-            <h1>Formação shinobi</h1>
-            <p>Monte até 5 combatentes no tabuleiro 3×3. A coluna da direita é a linha de frente e muda foco de alvo, iniciativa e sinergias.</p>
+            <span class="eyebrow">Centro de comando · formação ativa</span>
+            <h1>Minha equipe</h1>
+            <p>Escalone até quatro ninjas ao lado do protagonista, ajuste a grade 3×3 e confira quem pode entrar na formação.</p>
           </div>
           <div class="screen-head__stats">
             <div><b>${squad.length}/5</b><span>Em campo</span></div>
-            <div><b>${game.state.ninjas.length}/${ROSTER.length}</b><span>Coleção</span></div>
+            <div><b>${game.state.ninjas.length}/${ROSTER.length}</b><span>Clássicos</span></div>
             <div><b>${game.level}</b><span>Nível</span></div>
           </div>
         </header>
 
-        <div class="team-layout">
-          <div class="team-col">
-            <section class="panel">
+        <div class="team-layout team-layout--reference">
+          <aside class="panel team-sidebar" aria-label="Equipe ativa">
+            <header class="panel__head team-sidebar__head">
+              <div><span class="eyebrow">Esquadrão atual</span><h2>Minha equipe</h2></div>
+              <span class="chip">${squad.length}/5</span>
+            </header>
+            <p class="team-sidebar__summary">Protagonista + até quatro aliados. Selecione um integrante para abrir sua ficha.</p>
+            <ol class="team-party-list">
+              ${Array.from({ length: 5 }).map((_, index) => {
+                const id = squad[index];
+                if (!id) {
+                  return `
+                    <li class="team-party-list__empty">
+                      <span class="team-party-list__number">P${String(index + 1).padStart(2, '0')}</span>
+                      <span><strong>Vaga livre</strong><small>Escolha um ninja na coleção</small></span>
+                      <i aria-hidden="true">＋</i>
+                    </li>
+                  `;
+                }
+                const character = characterFor(id);
+                const role = FORMATION_ROLES[roleFor(character)];
+                const lane = formationLane(game.formationSlot(id) ?? 4);
+                return `
+                  <li class="team-party-list__item ${id === selectedId ? 'is-selected' : ''}">
+                    <button class="team-party-list__select" data-character="${esc(id)}" type="button" aria-label="Selecionar ${esc(character.name)}">
+                      <span class="team-party-list__number">P${String(index + 1).padStart(2, '0')}</span>
+                      ${characterPortrait(character, { size: 'small' })}
+                      <span class="team-party-list__identity"><strong>${esc(character.name)}</strong><small>${esc(role.label)} · ${lane}</small></span>
+                    </button>
+                    ${id !== 'hero' ? `<button class="team-party-list__remove" data-remove="${esc(id)}" type="button" title="Remover da formação" aria-label="Remover ${esc(character.name)}">×</button>` : '<span class="team-party-list__leader" title="Protagonista obrigatório">LÍDER</span>'}
+                  </li>
+                `;
+              }).join('')}
+            </ol>
+            <div class="team-sidebar__foot">
+              <span class="team-sidebar__status"><i aria-hidden="true"></i> Formação salva</span>
+              <p>As mudanças de integrantes e posições são guardadas no progresso local.</p>
+            </div>
+          </aside>
+
+          <div class="team-col team-center">
+            <section class="panel team-stage">
               <header class="panel__head">
-                <div>
-                  <span class="eyebrow">Vagas de combate</span>
-                  <h2>Formação ativa</h2>
-                </div>
-                <span class="chip">${squad.length} de 5</span>
+                <div><span class="eyebrow">Posicionamento tático</span><h2>Campo de formação</h2></div>
+                <span class="chip">Grade 3×3</span>
               </header>
               <div class="formation-board__caption">
                 <span>Retaguarda</span><span>Meio</span><strong>Frente · inimigo →</strong>
               </div>
               <div class="formation-board" role="grid" aria-label="Grade tática 3 por 3">
-                ${Array.from({ length: 9 })
-                  .map((_, slot) => {
-                    const id = squad.find((memberId) => game.formationSlot(memberId) === slot);
-                    const lane = formationLane(slot);
-                    const isMoving = moveModeId === selectedId && squad.includes(selectedId);
-                    const isRecruitTarget = !squad.includes(selectedId) && game.isOwned(selectedId);
-                    const isTarget = isMoving || (!id && isRecruitTarget);
-                    if (!id) {
-                      return `
-                        <button class="formation-cell formation-cell--empty ${isTarget ? 'is-target' : ''}" data-formation-slot="${slot}" type="button"
-                          aria-label="Posição ${slot + 1}, ${lane}${isTarget ? ', destino disponível' : ', vaga vazia'}">
-                          <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
-                          <span class="formation-cell__lane">${lane}</span>
-                          <b class="formation-cell__plus">+</b>
-                          <small>${isMoving ? 'Mover selecionado' : isRecruitTarget ? 'Alocar selecionado' : 'Vaga livre'}</small>
-                        </button>
-                      `;
-                    }
-                    const character = characterFor(id);
-                    const role = FORMATION_ROLES[roleFor(character)];
+                ${Array.from({ length: 9 }).map((_, slot) => {
+                  const id = squad.find((memberId) => game.formationSlot(memberId) === slot);
+                  const lane = formationLane(slot);
+                  const isMoving = moveModeId === selectedId && squad.includes(selectedId);
+                  const isRecruitTarget = !squad.includes(selectedId) && game.isOwned(selectedId);
+                  const isTarget = isMoving || (!id && isRecruitTarget);
+                  if (!id) {
                     return `
-                      <div class="formation-cell-wrap ${id === selectedId ? 'is-selected' : ''} ${isMoving && id !== selectedId ? 'is-target' : ''}">
-                        <button class="formation-cell" data-formation-slot="${slot}" data-member-id="${id}" type="button"
-                          aria-label="${esc(character.name)}, ${role.label}, ${lane}, posição ${slot + 1}">
-                          <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
-                          ${sigilAvatar(character, { size: 'sm' })}
-                          <strong>${esc(character.name)}</strong>
-                          <small>${role.kanji} ${role.label}</small>
-                          <em>${lane}</em>
-                          ${id === 'hero' ? '<span class="formation-cell__fixed">Líder</span>' : ''}
-                        </button>
-                        ${id !== 'hero' ? `<button class="formation-cell__remove" data-remove="${id}" type="button" title="Remover da formação" aria-label="Remover ${esc(character.name)}">×</button>` : ''}
-                      </div>
+                      <button class="formation-cell formation-cell--empty ${isTarget ? 'is-target' : ''}" data-formation-slot="${slot}" type="button"
+                        aria-label="Posição ${slot + 1}, ${lane}${isTarget ? ', destino disponível' : ', vaga vazia'}">
+                        <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
+                        <span class="formation-cell__lane">${lane}</span>
+                        <b class="formation-cell__plus">+</b>
+                        <small>${isMoving ? 'Mover selecionado' : isRecruitTarget ? 'Alocar selecionado' : 'Vaga livre'}</small>
+                      </button>
                     `;
-                  })
-                  .join('')}
+                  }
+                  const character = characterFor(id);
+                  const role = FORMATION_ROLES[roleFor(character)];
+                  return `
+                    <div class="formation-cell-wrap ${id === selectedId ? 'is-selected' : ''} ${isMoving && id !== selectedId ? 'is-target' : ''}">
+                      <button class="formation-cell" data-formation-slot="${slot}" data-member-id="${esc(id)}" type="button"
+                        aria-label="${esc(character.name)}, ${role.label}, ${lane}, posição ${slot + 1}">
+                        <span class="formation-cell__index">P${String(slot + 1).padStart(2, '0')}</span>
+                        ${characterPortrait(character, { size: 'formation' })}
+                        <strong>${esc(character.name)}</strong>
+                        <small>${role.kanji} ${role.label}</small>
+                        <em>${lane}</em>
+                        ${id === 'hero' ? '<span class="formation-cell__fixed">Líder</span>' : ''}
+                      </button>
+                      ${id !== 'hero' ? `<button class="formation-cell__remove" data-remove="${esc(id)}" type="button" title="Remover da formação" aria-label="Remover ${esc(character.name)}">×</button>` : ''}
+                    </div>
+                  `;
+                }).join('')}
               </div>
-              <p class="formation-board__hint">Selecione um ninja para ver sua ficha. Use “Reposicionar” na ficha para trocar células; uma vaga vazia aloca o ninja selecionado.</p>
+              <p class="formation-board__hint">Escolha um aliado na coleção e depois uma célula livre. Para trocar posições, selecione um integrante e clique no destino.</p>
               <div class="formation-bonus">
-                <div class="formation-bonus__head">
-                  <strong>Sinergia da formação</strong>
-                  <span>Bônus calculados pela função e coluna</span>
-                </div>
+                <div class="formation-bonus__head"><strong>Sinergia da formação</strong><span>Bônus por função e coluna</span></div>
                 <div class="formation-bonus__chips">${bonusRows.join('') || '<span class="formation-bonus__empty">Nenhum bônus ativo</span>'}</div>
               </div>
-              <p class="panel__note">
-                Vanguarda fortalece a vida e protege a frente; Atacante amplia dano básico; Suporte melhora chakra/Guarda;
-                Controle fortalece técnicas. As perseguições dependem dos gatilhos de Flutuação e Derrubar.
-              </p>
+              <p class="panel__note">Vanguarda protege a linha de frente; Atacante amplia o dano; Suporte melhora chakra/Guarda; Controle fortalece técnicas. Perseguições dependem de Flutuação e Derrubar.</p>
             </section>
+
+            <aside class="detail-panel" id="detail-panel" aria-label="Ficha do personagem selecionado">${detailMarkup(selected, squad)}</aside>
 
             <section class="panel combo-lab">
               <header class="panel__head">
                 <div><span class="eyebrow">Planejamento tático</span><h2>Laboratório de combos</h2></div>
-                <span class="chip">${squad.length}/5 no tabuleiro</span>
+                <span class="chip">${squad.length}/5 em campo</span>
               </header>
-              <p class="panel__note">Simulação das perseguições disponíveis para o ninja selecionado. A chance do efeito inicial não é alterada; o encadeamento presume que o gatilho aconteceu.</p>
+              <p class="panel__note">Simulação das perseguições do ninja selecionado. O encadeamento presume que o gatilho aconteceu.</p>
               <div class="combo-lab__grid">
                 ${comboPanelMarkup('Combo por Ataque', basicCombo)}
                 <section class="combo-track">
@@ -149,43 +183,58 @@ export function renderTeam(container, { characterId = null } = {}) {
                 </section>
               </div>
             </section>
-
-            <section class="panel">
-              <header class="panel__head">
-                <div>
-                  <span class="eyebrow">Coleção</span>
-                  <h2>Ninjas desbloqueados</h2>
-                </div>
-                <span class="chip">${game.state.ninjas.length} invocados</span>
-              </header>
-              <div class="roster-grid">
-                ${rosterCard(characterFor('hero'), {
-                  owned: true,
-                  level: game.level,
-                  inSquad: squad.includes('hero'),
-                  isHero: true,
-                  stats: statsFor(game.hero, game.level),
-                  selected: selectedId === 'hero',
-                })}
-                ${ROSTER.map((character) =>
-                  rosterCard(character, {
-                    owned: game.isOwned(character.id),
-                    level: game.level,
-                    inSquad: squad.includes(character.id),
-                    stats: statsFor(character, game.level),
-                    selected: selectedId === character.id,
-                  }),
-                ).join('')}
-              </div>
-            </section>
           </div>
 
-          <aside class="detail-panel" id="detail-panel">${detailMarkup(selected, squad)}</aside>
+          <aside class="panel team-roster" aria-label="Coleção de ninjas">
+            <header class="panel__head team-roster__head">
+              <div><span class="eyebrow">Recrutamento</span><h2>Ninjas possuídos</h2></div>
+              <span class="chip" data-roster-count></span>
+            </header>
+            <label class="team-roster__search">
+              <span class="sr-only">Buscar ninjas</span>
+              <input class="input" data-roster-search type="search" value="${esc(collectionSearch)}" placeholder="Nome do ninja" autocomplete="off">
+            </label>
+            <div class="team-roster__filters">
+              <label><span>Disponibilidade</span><select data-roster-owned aria-label="Filtrar por disponibilidade">
+                <option value="all" ${ownedFilter === 'all' ? 'selected' : ''}>Todos</option>
+                <option value="owned" ${ownedFilter === 'owned' ? 'selected' : ''}>Invocados</option>
+                <option value="locked" ${ownedFilter === 'locked' ? 'selected' : ''}>Não invocados</option>
+                <option value="active" ${ownedFilter === 'active' ? 'selected' : ''}>Em campo</option>
+              </select></label>
+              <label><span>Raridade</span><select data-roster-rarity aria-label="Filtrar por raridade">
+                <option value="all" ${rarityFilter === 'all' ? 'selected' : ''}>Todas</option>
+                ${Object.entries(RARITIES).map(([id, rarity]) => `<option value="${id}" ${rarityFilter === id ? 'selected' : ''}>${rarity.label}</option>`).join('')}
+              </select></label>
+              <label><span>Elemento</span><select data-roster-element aria-label="Filtrar por elemento">
+                <option value="all" ${elementFilter === 'all' ? 'selected' : ''}>Todos</option>
+                ${Object.entries(ELEMENTS).map(([id, element]) => `<option value="${id}" ${elementFilter === id ? 'selected' : ''}>${element.label}</option>`).join('')}
+              </select></label>
+            </div>
+            <div class="roster-grid team-roster__grid">
+              ${rosterCard(characterFor('hero'), {
+                owned: true,
+                level: game.level,
+                inSquad: squad.includes('hero'),
+                isHero: true,
+                stats: statsFor(game.hero, game.level),
+                selected: selectedId === 'hero',
+              })}
+              ${ROSTER.map((character) => rosterCard(character, {
+                owned: game.isOwned(character.id),
+                level: game.level,
+                inSquad: squad.includes(character.id),
+                stats: statsFor(character, game.level),
+                selected: selectedId === character.id,
+              })).join('')}
+            </div>
+            <p class="team-roster__empty" data-roster-empty hidden>Nenhum ninja corresponde aos filtros.</p>
+          </aside>
         </div>
       </section>
     `;
 
     bind();
+    applyRosterFilters();
   }
 
   function bind() {
@@ -257,7 +306,56 @@ export function renderTeam(container, { characterId = null } = {}) {
       draw();
     });
 
+    container.querySelector('[data-roster-search]')?.addEventListener('input', (event) => {
+      collectionSearch = event.currentTarget.value;
+      applyRosterFilters();
+    });
+    container.querySelector('[data-roster-owned]')?.addEventListener('change', (event) => {
+      ownedFilter = event.currentTarget.value;
+      applyRosterFilters();
+    });
+    container.querySelector('[data-roster-rarity]')?.addEventListener('change', (event) => {
+      rarityFilter = event.currentTarget.value;
+      applyRosterFilters();
+    });
+    container.querySelector('[data-roster-element]')?.addEventListener('change', (event) => {
+      elementFilter = event.currentTarget.value;
+      applyRosterFilters();
+    });
+
+    bindPortraitFallbacks();
     bindDetail();
+  }
+
+  function applyRosterFilters() {
+    const query = normalizeRosterText(collectionSearch.trim());
+    let visibleCount = 0;
+    container.querySelectorAll('.team-roster__grid .roster-card').forEach((card) => {
+      const owned = card.dataset.owned === 'true';
+      const searchMatches = !query || normalizeRosterText(card.dataset.search ?? '').includes(query);
+      const ownedMatches = ownedFilter === 'all'
+        || (ownedFilter === 'owned' && owned)
+        || (ownedFilter === 'locked' && !owned)
+        || (ownedFilter === 'active' && card.classList.contains('roster-card--active'));
+      const rarityMatches = rarityFilter === 'all' || card.dataset.rarity === rarityFilter;
+      const elementMatches = elementFilter === 'all' || card.dataset.element === elementFilter;
+      const matches = searchMatches && ownedMatches && rarityMatches && elementMatches;
+      card.hidden = !matches;
+      if (matches) visibleCount += 1;
+    });
+    const total = container.querySelectorAll('.team-roster__grid .roster-card').length;
+    const count = container.querySelector('[data-roster-count]');
+    if (count) count.textContent = `${visibleCount}/${total}`;
+    const empty = container.querySelector('[data-roster-empty]');
+    if (empty) empty.hidden = visibleCount > 0;
+  }
+
+  function bindPortraitFallbacks() {
+    container.querySelectorAll('.character-portrait img').forEach((image) => {
+      const showFallback = () => image.closest('.character-portrait')?.classList.add('is-fallback');
+      image.addEventListener('error', showFallback, { once: true });
+      if (image.complete && image.naturalWidth === 0) showFallback();
+    });
   }
 
   function bindDetail() {
@@ -306,7 +404,7 @@ export function renderTeam(container, { characterId = null } = {}) {
     return `
       <div class="detail" style="--detail-color:${style.color}">
         <div class="detail__head">
-          ${sigilAvatar(character, { size: 'xl' })}
+          ${characterPortrait(character, { size: 'hero' })}
           <div>
             <span class="eyebrow">${isHero ? 'Protagonista' : RARITIES[character.rarity]?.label ?? 'Ninja'}</span>
             <h2>${esc(character.name)}</h2>
@@ -405,7 +503,7 @@ export function renderTeam(container, { characterId = null } = {}) {
       body: `
         <div class="jutsu-sheet">
           <div class="jutsu-sheet__intro">
-            ${sigilAvatar(character, { size: 'lg' })}
+            ${characterPortrait(character, { size: 'modal' })}
             <p>${esc(character.title ?? '')}. Atributos calculados no nível ${game.level}.</p>
           </div>
           <ul class="jutsu-list">
@@ -438,6 +536,10 @@ export function renderTeam(container, { characterId = null } = {}) {
       `,
     });
   }
+}
+
+function normalizeRosterText(value) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 }
 
 function comboPanelMarkup(title, combo) {

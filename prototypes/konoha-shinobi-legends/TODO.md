@@ -67,3 +67,11 @@
 - [x] Mantenha os dados do HUD sincronizados com o save atual e conecte cada botão a uma tela/ação existente; o briefing mostrado no painel abre a missão correta, e elementos puramente decorativos são identificados como tal.
 - [x] Reflow para telas pequenas sem rolagem horizontal nem sobreposição de controles; a navegação inferior e os painéis continuam legíveis, operáveis por toque e teclado, e respeitam `prefers-reduced-motion`.
 - [x] Use cenário original ou assets já presentes; não copie a captura, logotipo, personagens desenhados ou arquivos oficiais do Naruto Online.
+
+
+- [x] Pesquisar a organização da tela de formação do Naruto Online e usar as imagens de referência anexadas para orientar a composição, sem embutir capturas ou copiar código, logos, ícones, sprites ou outros assets oficiais.
+- [x] Reorganizar a tela Equipe em regiões claras: equipe ativa e vagas à esquerda, tabuleiro tático 3×3 no centro e coleção de personagens com busca/filtros à direita; manter à vista os integrantes escalados e a ficha do personagem selecionado.
+- [x] Preservar o protagonista obrigatório, o limite atual de até quatro ninjas clássicos além dele, as regras de seleção, alocação, remoção e reposicionamento, os bônus de sinergia e o simulador de combo; a mudança visual não deve alterar o save existente nem o motor de combate.
+- [ ] Criar retratos originais individuais para o protagonista e os 22 personagens clássicos do elenco, e exibi-los na coleção, na formação e na ficha; manter os selos/kanji atuais como fallback se uma imagem não carregar.
+- [x] Manter a tela responsiva, sem overflow horizontal, com controles operáveis por toque e teclado, foco visível e respeito a `prefers-reduced-motion`.
+- [x] Registrar as fontes consultadas e os limites da adaptação em `TEAM_SCREEN_RESEARCH_NOTES.md`.

@@ -31,3 +31,19 @@ A pesquisa pública e a captura original estão documentadas em `LAYOUT_RESEARCH
 - `LAYOUT_RESEARCH_NOTES.md`: fontes e decisões que preservam a distinção entre inspiração de interface e cópia de assets.
 
 Não haverá API, login ou migração de save. A aplicação permanece de página única em `/`; `public/manus-routes.json` continua declarando somente essa rota.
+
+## Extensão — tela de equipes baseada na referência enviada
+
+A tela Equipe passa a usar uma composição original inspirada na captura do usuário e na organização de um construtor de formações: coluna esquerda com a equipe ativa e vagas, campo tático 3×3 no centro, coleção filtrável de personagens à direita e ficha contextual para o ninja selecionado. A forma visual aproveita o contraste azul-marinho/ciano da referência, mantendo os acentos vermelhão e ouro próprios do projeto. Não serão reutilizados o screenshot, os ícones, os sprites, o código ou a identidade visual proprietária do Naruto Online.
+
+O núcleo atual de seleção, alocação, remoção, reposicionamento, estatísticas, sinergias e simulação de combos permanece como fonte de verdade. Os cartões ganham filtros por raridade/elemento/estado de invocação e pesquisa textual; seleção e alocação continuam possíveis por teclado e toque. O painel à esquerda representa a formação ativa já persistida pelo jogo; não cria presets falsos nem altera o formato do save. A organização adapta padrões descritos na orientação oficial de composição de times e no team builder independente, enquanto mantém as regras de cinco integrantes e grade 3×3 deste protótipo; fontes e limites estão em `TEAM_SCREEN_RESEARCH_NOTES.md`.
+
+Serão criados retratos originais, individuais e sem interface/texto, para o protagonista e os 22 personagens clássicos já cadastrados. As imagens ficam no Managed Storage do projeto e são mapeadas por ID em `src/data/character-art.js`; aparecem nos cartões da coleção, formação e ficha do ninja. Nomes, IDs, atributos e técnicas continuam vindo de `src/data/characters.js` e `src/data/jutsus.js`. Caso uma imagem não carregue, o selo/kanji atual continua como fallback.
+
+### Estrutura afetada
+
+- `src/ui/screens/team.js`: compor as três regiões, presets, busca/filtros e controles existentes, mantendo a API do motor de formação.
+- `src/ui/components.js` e `src/data/character-art.js`: apresentar retratos com fallback seguro e mapear IDs para assets sem misturar arte aos dados de balanceamento.
+- Assets de personagem no Managed Storage, referenciados por URLs `/manus-storage/async-images/...` preservadas no mapa de arte.
+- `src/styles/screens.css`: skin da formação, cartões com arte, detalhe e reflow responsivo; `src/styles/layout.css` permanece inalterado fora dos estilos globais existentes.
+- `TEAM_SCREEN_RESEARCH_NOTES.md`: fontes consultadas, síntese da composição e distinção entre referência visual e reprodução de assets/código.
