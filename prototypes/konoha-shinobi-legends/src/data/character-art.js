@@ -1,0 +1,27 @@
+// Retratos individuais gerados para a tela de equipes, servidos pelo armazenamento do projeto.
+// Cada URL corresponde a um asset por personagem; o selo/kanji é o fallback da interface.
+export const CHARACTER_ART = Object.freeze({
+  hero: '/manus-storage/async-images/gwXPW5qbYRqZYHgUaIw3CT/image-1.webp',
+  naruto: '/manus-storage/async-images/uvkxtTuQ9A2H5Wptou1v3i/image-4.webp',
+  sasuke: '/manus-storage/async-images/gwXPW5qbYRqZYHgUaIw3CT/image-3.webp',
+  sakura: '/manus-storage/async-images/gwXPW5qbYRqZYHgUaIw3CT/image-4.webp',
+  kakashi: '/manus-storage/async-images/gwXPW5qbYRqZYHgUaIw3CT/image-5.webp',
+  tenten: '/manus-storage/async-images/2ta7DD9dMocz0IqMBov33c/image-1.webp',
+  kiba: '/manus-storage/async-images/2ta7DD9dMocz0IqMBov33c/image-2.webp',
+  shino: '/manus-storage/async-images/2ta7DD9dMocz0IqMBov33c/image-3.webp',
+  ino: '/manus-storage/async-images/2ta7DD9dMocz0IqMBov33c/image-4.webp',
+  hinata: '/manus-storage/async-images/2ta7DD9dMocz0IqMBov33c/image-5.webp',
+  lee: '/manus-storage/async-images/3iurMYV3sfMWv35U45eJj7/image-1.webp',
+  shikamaru: '/manus-storage/async-images/3iurMYV3sfMWv35U45eJj7/image-2.webp',
+  gaara: '/manus-storage/async-images/3iurMYV3sfMWv35U45eJj7/image-3.webp',
+  jiraiya: '/manus-storage/async-images/3iurMYV3sfMWv35U45eJj7/image-4.webp',
+  tsunade: '/manus-storage/async-images/3iurMYV3sfMWv35U45eJj7/image-5.webp',
+  itachi: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-1.webp',
+  minato: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-2.webp',
+  neji: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-3.webp',
+  choji: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-4.webp',
+  temari: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-5.webp',
+  kankuro: '/manus-storage/async-images/uvkxtTuQ9A2H5Wptou1v3i/image-1.webp',
+  zabuza: '/manus-storage/async-images/uvkxtTuQ9A2H5Wptou1v3i/image-2.webp',
+  haku: '/manus-storage/async-images/uvkxtTuQ9A2H5Wptou1v3i/image-3.webp',
+});
