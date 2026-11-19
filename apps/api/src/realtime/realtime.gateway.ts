@@ -49,6 +49,27 @@ export class RealtimeGateway implements OnGatewayConnection,OnGatewayDisconnect 
   return {event:'world:presence',data:await this.presence.snapshot()};
  }
 
+ @SubscribeMessage('world:join-map')
+ async handleJoinMap(@ConnectedSocket() client: Socket, @MessageBody() data: { mapId: string }) {
+  client.join(data.mapId);
+  this.logger.log(`Usuário ${client.data.userId} entrou no mapa ${data.mapId}`);
+ }
+
+ @SubscribeMessage('world:move')
+ async handleMove(
+  @ConnectedSocket() client: Socket,
+  @MessageBody() data: { x: number; y: number; mapId: string }
+ ) {
+  const userId = client.data.userId;
+  if (!userId) return;
+
+  client.to(data.mapId).emit('world:player-moved', {
+   userId,
+   x: data.x,
+   y: data.y,
+  });
+ }
+
  private broadcastPresence(snapshot:PresenceSnapshot){
   this.server?.emit('world:presence',snapshot);
  }

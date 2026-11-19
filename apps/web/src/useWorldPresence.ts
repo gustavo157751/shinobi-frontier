@@ -4,6 +4,8 @@ import { io } from 'socket.io-client';
 export type WorldPresence = {
   online: number | null;
   connected: boolean;
+  emitMove: (x: number, y: number, mapId: string) => void;
+  joinMap: (mapId: string) => void;
 };
 
 function socketEndpoint(): string {
@@ -20,6 +22,7 @@ function socketEndpoint(): string {
 export function useWorldPresence(enabled: boolean): WorldPresence {
   const [online, setOnline] = useState<number | null>(null);
   const [connected, setConnected] = useState(false);
+  const [socket, setSocket] = useState<any>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -28,23 +31,32 @@ export function useWorldPresence(enabled: boolean): WorldPresence {
       return;
     }
 
-    const socket = io(socketEndpoint(), { withCredentials: true });
+    const s = io(socketEndpoint(), { withCredentials: true });
+    setSocket(s);
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => {
+    s.on('connect', () => setConnected(true));
+    s.on('disconnect', () => {
       setConnected(false);
       setOnline(null);
     });
-    socket.on('connect_error', () => setConnected(false));
-    socket.on('world:presence', (payload: { online?: number }) => {
+    s.on('connect_error', () => setConnected(false));
+    s.on('world:presence', (payload: { online?: number }) => {
       if (typeof payload?.online === 'number') setOnline(payload.online);
     });
 
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
+      s.removeAllListeners();
+      s.disconnect();
     };
   }, [enabled]);
 
-  return { online, connected };
+  const emitMove = (x: number, y: number, mapId: string) => {
+    if (socket) socket.emit('world:move', { x, y, mapId });
+  };
+
+  const joinMap = (mapId: string) => {
+    if (socket) socket.emit('world:join-map', { mapId });
+  };
+
+  return { online, connected, emitMove, joinMap };
 }

@@ -9,10 +9,10 @@ import { CraftingView } from './CraftingView';
 import type { Battle, BattleState, Character, CombatReward } from './types';
 
 const paths = [
-  ['SHADOW_BLADE', 'L+Ûmina das Sombras'],
+  ['SHADOW_BLADE', 'L+√≥mina das Sombras'],
   ['FLAME_EYE', 'Olho das Chamas'],
-  ['WIND_DANCER', 'Dan+∫arina dos Ventos'],
-  ['WATER_CLAW', 'Garra das +¸guas'],
+  ['WIND_DANCER', 'Dan+¬∫arina dos Ventos'],
+  ['WATER_CLAW', 'Garra das +√ºguas'],
   ['STONE_FIST', 'Punho de Pedra'],
 ];
 
@@ -50,7 +50,7 @@ export default function App() {
         }
       })
       .catch(() => {
-        if (!cancelled) setMessage('N+˙o foi poss+°vel alcan+∫ar a API. Confira se o servidor est+Ì online e se VITE_API_URL est+Ì correto.');
+        if (!cancelled) setMessage('N+√∫o foi poss+¬°vel alcan+¬∫ar a API. Confira se o servidor est+√≠ online e se VITE_API_URL est+√≠ correto.');
       })
       .finally(() => {
         if (!cancelled) setAuthChecking(false);
@@ -69,14 +69,14 @@ export default function App() {
         body: JSON.stringify(mode === 'register' ? { email, password, characterName: name, path } : { email, password }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'Falha na autentica+∫+˙o.');
+      if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'Falha na autentica+¬∫+√∫o.');
       saveSession(data.character);
       setPassword('');
       setMessage('');
     } catch (error) {
       setMessage(error instanceof TypeError
-        ? 'N+˙o foi poss+°vel alcan+∫ar a API. Confira se o servidor est+Ì online e se VITE_API_URL est+Ì correto.'
-        : error instanceof Error ? error.message : 'Erro de conex+˙o.');
+        ? 'N+√∫o foi poss+¬°vel alcan+¬∫ar a API. Confira se o servidor est+√≠ online e se VITE_API_URL est+√≠ correto.'
+        : error instanceof Error ? error.message : 'Erro de conex+√∫o.');
     }
   }
 
@@ -118,15 +118,15 @@ export default function App() {
           setAuthenticated(false);
           setCharacter(null);
         }
-        throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'N+˙o foi poss+°vel atualizar o confronto.');
+        throw new Error(Array.isArray(data.message) ? data.message[0] : data.message || 'N+√∫o foi poss+¬°vel atualizar o confronto.');
       }
       setBattle(data.battle);
       if (data.character) saveSession(data.character);
       return data;
     } catch (error) {
       setMessage(error instanceof TypeError
-        ? 'N+˙o foi poss+°vel alcan+∫ar a API. Confira se o servidor est+Ì online e se VITE_API_URL est+Ì correto.'
-        : error instanceof Error ? error.message : 'Erro de conex+˙o com o servidor.');
+        ? 'N+√∫o foi poss+¬°vel alcan+¬∫ar a API. Confira se o servidor est+√≠ online e se VITE_API_URL est+√≠ correto.'
+        : error instanceof Error ? error.message : 'Erro de conex+√∫o com o servidor.');
       return null;
     } finally {
       setBusy(false);
@@ -138,7 +138,7 @@ export default function App() {
     await combatRequest('/combat/current');
   }
 
-  /** Rel+¨ o personagem ap+¶s gastar ry+Ï ou ganhar recompensa em outra tela. */
+  /** Rel+¬¨ o personagem ap+¬¶s gastar ry+√¨ ou ganhar recompensa em outra tela. */
   async function refreshCharacter() {
     try {
       const response = await fetch(api + '/auth/me', { credentials: 'include' });
@@ -146,33 +146,33 @@ export default function App() {
       const data = await response.json() as { character: Character | null };
       if (data.character) setCharacter(data.character);
     } catch {
-      // Mant+Æm o estado atual se a API estiver momentaneamente indispon+°vel.
+      // Mant+¬Æm o estado atual se a API estiver momentaneamente indispon+¬°vel.
     }
   }
 
   const className = paths.find((item) => item[0] === character?.path)?.[1] || 'Shinobi';
 
-  if (authChecking) return <main className="auth"><section className="formside"><small>SHINOBI FRONTIER</small><h2>Conectando ao mundo</h2><p className="muted">Verificando a sess+˙o e carregando seu personagem...</p></section></main>;
+  if (authChecking) return <main className="auth"><section className="formside"><small>SHINOBI FRONTIER</small><h2>Conectando ao mundo</h2><p className="muted">Verificando a sess+√∫o e carregando seu personagem...</p></section></main>;
 
   if (!authenticated || !character) {
-    return <main className="auth"><section className="art"><div className="seal">SF</div><small>UM NOVO MUNDO SHINOBI</small><h1>Forje seu<br/><em>destino.</em></h1><p>Re+¶na aliados. Domine t+Æcnicas. Escreva sua lenda.</p><b className="kanji">’+Ï</b></section><section className="formside"><small>SHINOBI FRONTIER -¿ API DO JOGO</small><h2>{mode === 'register' ? 'Crie sua jornada' : 'Bem-vindo de volta'}</h2><p className="muted">Acesse o mundo e comece sua evolu+∫+˙o.</p><form onSubmit={submit}><label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email"/></label><label>Senha<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="M+°nimo de 10 caracteres"/></label>{mode === 'register' && <><label>Nome do personagem<input value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={18} required autoComplete="nickname"/></label><label>Caminho shinobi<select value={path} onChange={(event) => setPath(event.target.value)}>{paths.map((item) => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label></>}<button>{mode === 'register' ? 'CRIAR CONTA' : 'ENTRAR NO MUNDO'}</button></form>{message && <p className="message">{message}</p>}<p className="switch">{mode === 'register' ? 'J+Ì possui conta?' : 'Novo por aqui?'} <a onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? 'Entrar' : 'Criar conta'}</a></p><small className="foot">Uma aventura original -¿ Shinobi Frontier</small></section></main>;
+    return <main className="auth"><section className="art"><div className="seal">SF</div><small>UM NOVO MUNDO SHINOBI</small><h1>Forje seu<br/><em>destino.</em></h1><p>Re+¬¶na aliados. Domine t+¬Æcnicas. Escreva sua lenda.</p><b className="kanji">√ï+√¨</b></section><section className="formside"><small>SHINOBI FRONTIER -√Ä API DO JOGO</small><h2>{mode === 'register' ? 'Crie sua jornada' : 'Bem-vindo de volta'}</h2><p className="muted">Acesse o mundo e comece sua evolu+¬∫+√∫o.</p><form onSubmit={submit}><label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email"/></label><label>Senha<input type="password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="M+¬°nimo de 10 caracteres"/></label>{mode === 'register' && <><label>Nome do personagem<input value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={18} required autoComplete="nickname"/></label><label>Caminho shinobi<select value={path} onChange={(event) => setPath(event.target.value)}>{paths.map((item) => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label></>}<button>{mode === 'register' ? 'CRIAR CONTA' : 'ENTRAR NO MUNDO'}</button></form>{message && <p className="message">{message}</p>}<p className="switch">{mode === 'register' ? 'J+√≠ possui conta?' : 'Novo por aqui?'} <a onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>{mode === 'register' ? 'Entrar' : 'Criar conta'}</a></p><small className="foot">Uma aventura original -√Ä Shinobi Frontier</small></section></main>;
   }
 
-  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span className={presence.connected ? 'presence connected' : 'presence'}><b>‘˘≈</b> {presence.connected ? (presence.online === null ? 'SINCRONIZANDO MUNDO' : presence.online + ' SHINOBI ONLINE') : 'MUNDO OFFLINE'} <button onClick={() => void logout()}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className={view === 'missions' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('missions'); setMessage(''); }}><ScrollText/> Miss+¡es</button><button className={view === 'team' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('team'); setMessage(''); }}><Users/> Equipe</button><button className={view === 'inventory' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('inventory'); setMessage(''); }}><Backpack/> Invent+Ìrio</button><button className={view === 'crafting' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('crafting'); setMessage(''); }}><Anvil/> Oficina</button><button className={view === 'talents' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('talents'); setMessage(''); }}><Brain/> Talentos</button><footer>CAP+ÏTULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
-    {view === 'village' ? <><small>VILA CENTRAL -¿ REGI+‚O DA SERRA</small><h1>Bem-vindo, {character.name}</h1><p className="muted">Seu caminho come+∫a agora, shinobi.</p><section className="banner"><small>SUA JORNADA</small><h2>Uma trilha desconhecida<br/>se abre diante de voc+¨.</h2><p>Treine, descubra sua afinidade e enfrente os perigos do vale.</p><button onClick={openCombat}>INICIAR TREINO</button><b>’+Ï</b></section><div className="cards"><section className="card"><small>PERFIL SHINOBI</small><h2>{character.name}</h2><p>{className} -¿ N+°vel {character.level}</p><div className="stats"><span><Swords/>{character.strength}<small>FOR+ÁA</small></span><span><Heart/>{character.vitality}<small>VITALIDADE</small></span><span><Wind/>{character.agility}<small>AGILIDADE</small></span><span><Zap/>{character.intelligence}<small>INTELIG+ËNCIA</small></span></div></section><section className="card"><small>RECURSOS</small><p>Energia <b>{character.energy}/100</b></p><p>Ry+Ï <b>{character.gold}</b></p><p>Caminho <b>{className}</b></p><aside>Seu personagem e sua progress+˙o s+˙o salvos no servidor.</aside></section></div></> : view === 'team' ? <TeamView api={api} onProgress={() => void refreshCharacter()}/> : view === 'missions' ? <MissionsView api={api} onBattle={(payload) => { setBattle(payload.battle); saveSession(payload.character); setView('combat'); setMessage(''); }} onProgress={() => void refreshCharacter()}/> : view === 'inventory' ? <InventoryView api={api} onCharacter={saveSession}/> : view === 'crafting' ? <CraftingView api={api} onCharacter={saveSession}/> : view === 'talents' ? <TalentsView api={api} onCharacter={saveSession}/> : <CombatView battle={battle} busy={busy} message={message} onStart={() => void combatRequest('/combat/start', {})} onAction={(action) => void combatRequest('/combat/action', { action })}/ >}
+  return <div className="shell"><header><b><i>SF</i> SHINOBI FRONTIER</b><span className={presence.connected ? 'presence connected' : 'presence'}><b>√î√π√Ö</b> {presence.connected ? (presence.online === null ? 'SINCRONIZANDO MUNDO' : presence.online + ' SHINOBI ONLINE') : 'MUNDO OFFLINE'} <button onClick={() => void logout()}>SAIR</button></span></header><div className="layout"><nav><small>MUNDO</small><button className={view === 'village' ? 'nav-link active' : 'nav-link'} onClick={() => setView('village')}><Shield/> Vila Central</button><button className="nav-link" onClick={openCombat}><Swords/> Combate</button><button className={view === 'missions' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('missions'); setMessage(''); }}><ScrollText/> Miss+√Åes</button><button className={view === 'team' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('team'); setMessage(''); }}><Users/> Equipe</button><button className={view === 'inventory' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('inventory'); setMessage(''); }}><Backpack/> Invent+√≠rio</button><button className={view === 'crafting' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('crafting'); setMessage(''); }}><Anvil/> Oficina</button><button className={view === 'talents' ? 'nav-link active' : 'nav-link'} onClick={() => { setView('talents'); setMessage(''); }}><Brain/> Talentos</button><footer>CAP+√¨TULO 01<br/><b>O DESPERTAR</b></footer></nav><main>
+    {view === 'village' ? <><small>VILA CENTRAL -√Ä REGI+√¢O DA SERRA</small><h1>Bem-vindo, {character.name}</h1><p className="muted">Seu caminho come+¬∫a agora, shinobi.</p><section className="banner"><small>SUA JORNADA</small><h2>Uma trilha desconhecida<br/>se abre diante de voc+¬¨.</h2><p>Treine, descubra sua afinidade e enfrente os perigos do vale.</p><button onClick={openCombat}>INICIAR TREINO</button><b>√ï+√¨</b></section><div className="cards"><section className="card"><small>PERFIL SHINOBI</small><h2>{character.name}</h2><p>{className} -√Ä N+¬°vel {character.level}</p><div className="stats"><span><Swords/>{character.strength}<small>FOR+√ßA</small></span><span><Heart/>{character.vitality}<small>VITALIDADE</small></span><span><Wind/>{character.agility}<small>AGILIDADE</small></span><span><Zap/>{character.intelligence}<small>INTELIG+√®NCIA</small></span></div></section><section className="card"><small>RECURSOS</small><p>Energia <b>{character.energy}/100</b></p><p>Ry+√¨ <b>{character.gold}</b></p><p>Caminho <b>{className}</b></p><aside>Seu personagem e sua progress+√∫o s+√∫o salvos no servidor.</aside></section></div></> : view === 'team' ? <TeamView api={api} onProgress={() => void refreshCharacter()}/> : view === 'missions' ? <MissionsView api={api} onBattle={(payload) => { setBattle(payload.battle); saveSession(payload.character); setView('combat'); setMessage(''); }} onProgress={() => void refreshCharacter()}/> : view === 'inventory' ? <InventoryView api={api} onCharacter={saveSession}/> : view === 'crafting' ? <CraftingView api={api} onCharacter={saveSession}/> : view === 'talents' ? <TalentsView api={api} onCharacter={saveSession}/> : <CombatView battle={battle} busy={busy} message={message} onStart={() => void combatRequest('/combat/start', {})} onAction={(action) => void combatRequest('/combat/action', { action })}/ >}
     </main></div></div>;
 }
 
 function CombatView({ battle, busy, message, onStart, onAction }: {
   battle: Battle | null; busy: boolean; message: string; onStart: () => void; onAction: (action: 'strike' | 'technique' | 'guard') => void;
 }) {
-  if (!battle) return <section className="combat-empty"><small>CAMINHO DA SERRA -¿ TREINO</small><h1>Um desafio +· sua espera</h1><p>Encare um Batedor do V+Æu em um confronto por turnos. Suas escolhas e recompensas s+˙o validadas e salvas pelo servidor.</p>{message && <p className="message">{message}</p>}<button disabled={busy} onClick={onStart}>{busy ? 'PREPARANDO...' : 'INICIAR CONFRONTO -¿ 10 ENERGIA'}</button></section>;
+  if (!battle) return <section className="combat-empty"><small>CAMINHO DA SERRA -√Ä TREINO</small><h1>Um desafio +√° sua espera</h1><p>Encare um Batedor do V+¬Æu em um confronto por turnos. Suas escolhas e recompensas s+√∫o validadas e salvas pelo servidor.</p>{message && <p className="message">{message}</p>}<button disabled={busy} onClick={onStart}>{busy ? 'PREPARANDO...' : 'INICIAR CONFRONTO -√Ä 10 ENERGIA'}</button></section>;
 
   const state = battle.state;
   const playerPercent = Math.max(0, (state.player.hp / state.player.maxHp) * 100);
   const enemyPercent = Math.max(0, (state.enemy.hp / state.enemy.maxHp) * 100);
   const chakraPercent = Math.max(0, (state.player.chakra / state.player.maxChakra) * 100);
-  return <><div className="combat-heading"><div><small>{state.mission ? 'MISS+‚O -¿ ' + state.mission.name.toUpperCase() : 'CAMINHO DA SERRA'} -¿ TURNO {state.turn}</small><h1>{battle.status === 'ACTIVE' ? 'Confronto em andamento' : battle.status === 'VICTORY' ? 'Vit+¶ria shinobi' : 'Recuo estrat+Ægico'}</h1></div>{battle.status !== 'ACTIVE' && <button onClick={onStart} disabled={busy}>NOVO CONFRONTO</button>}</div>{message && <p className="message">{message}</p>}<section className="battlefield"><article className="fighter player-fighter"><div className="fighter-mark">’+Ï</div><small>SHINOBI -¿ N+ÏVEL {state.enemy.level}</small><h2>Sua jornada</h2><Meter label="VITALIDADE" value={state.player.hp} max={state.player.maxHp} percent={playerPercent}/><Meter label="CHAKRA" value={state.player.chakra} max={state.player.maxChakra} percent={chakraPercent}/></article><div className="versus">VS</div><article className="fighter enemy-fighter"><div className="fighter-mark">’¢¶</div><small>AMEA+ÁA -¿ N+ÏVEL {state.enemy.level}</small><h2>{state.enemy.name}</h2><Meter label="VITALIDADE" value={state.enemy.hp} max={state.enemy.maxHp} percent={enemyPercent}/></article></section>{battle.status === 'ACTIVE' && <section className="action-panel"><div><small>SUA VEZ</small><p>Escolha uma a+∫+˙o para responder ao advers+Ìrio.</p></div><button disabled={busy} onClick={() => onAction('strike')}><Swords/> GOLPE</button><button disabled={busy || state.player.chakra < 25} onClick={() => onAction('technique')}><Zap/> T+ÎCNICA -¿ 25 CHAKRA</button><button disabled={busy} onClick={() => onAction('guard')}><Shield/> DEFENDER</button></section>}<section className="battle-log"><small>RELATO DO CONFRONTO</small>{state.logs.slice().reverse().map((entry, index) => <p key={entry.turn + '-' + index} className={'log-' + entry.side}><span>T{entry.turn}</span>{entry.text}</p>)}</section></>;
+  return <><div className="combat-heading"><div><small>{state.mission ? 'MISS+√¢O -√Ä ' + state.mission.name.toUpperCase() : 'CAMINHO DA SERRA'} -√Ä TURNO {state.turn}</small><h1>{battle.status === 'ACTIVE' ? 'Confronto em andamento' : battle.status === 'VICTORY' ? 'Vit+¬¶ria shinobi' : 'Recuo estrat+¬Ægico'}</h1></div>{battle.status !== 'ACTIVE' && <button onClick={onStart} disabled={busy}>NOVO CONFRONTO</button>}</div>{message && <p className="message">{message}</p>}<section className="battlefield"><article className="fighter player-fighter"><div className="fighter-mark">√ï+√¨</div><small>SHINOBI -√Ä N+√¨VEL {state.enemy.level}</small><h2>Sua jornada</h2><Meter label="VITALIDADE" value={state.player.hp} max={state.player.maxHp} percent={playerPercent}/><Meter label="CHAKRA" value={state.player.chakra} max={state.player.maxChakra} percent={chakraPercent}/></article><div className="versus">VS</div><article className="fighter enemy-fighter"><div className="fighter-mark">√ï¬¢¬¶</div><small>AMEA+√ßA -√Ä N+√¨VEL {state.enemy.level}</small><h2>{state.enemy.name}</h2><Meter label="VITALIDADE" value={state.enemy.hp} max={state.enemy.maxHp} percent={enemyPercent}/></article></section>{battle.status === 'ACTIVE' && <section className="action-panel"><div><small>SUA VEZ</small><p>Escolha uma a+¬∫+√∫o para responder ao advers+√≠rio.</p></div><button disabled={busy} onClick={() => onAction('strike')}><Swords/> GOLPE</button><button disabled={busy || state.player.chakra < 25} onClick={() => onAction('technique')}><Zap/> T+√´CNICA -√Ä 25 CHAKRA</button><button disabled={busy} onClick={() => onAction('guard')}><Shield/> DEFENDER</button></section>}<section className="battle-log"><small>RELATO DO CONFRONTO</small>{state.logs.slice().reverse().map((entry, index) => <p key={entry.turn + '-' + index} className={'log-' + entry.side}><span>T{entry.turn}</span>{entry.text}</p>)}</section></>;
 }
 
 function Meter({ label, value, max, percent }: { label: string; value: number; max: number; percent: number }) {
