@@ -38,7 +38,7 @@ A tela Equipe passa a usar uma composição original inspirada na captura do usu
 
 O núcleo atual de seleção, alocação, remoção, reposicionamento, estatísticas, sinergias e simulação de combos permanece como fonte de verdade. Os cartões ganham filtros por raridade/elemento/estado de invocação e pesquisa textual; seleção e alocação continuam possíveis por teclado e toque. O painel à esquerda representa a formação ativa já persistida pelo jogo; não cria presets falsos nem altera o formato do save. A organização adapta padrões descritos na orientação oficial de composição de times e no team builder independente, enquanto mantém as regras de cinco integrantes e grade 3×3 deste protótipo; fontes e limites estão em `TEAM_SCREEN_RESEARCH_NOTES.md`.
 
-Serão criados retratos originais, individuais e sem interface/texto, para o protagonista e os 22 personagens clássicos já cadastrados. As imagens ficam no Managed Storage do projeto e são mapeadas por ID em `src/data/character-art.js`; aparecem nos cartões da coleção, formação e ficha do ninja. Nomes, IDs, atributos e técnicas continuam vindo de `src/data/characters.js` e `src/data/jutsus.js`. Caso uma imagem não carregue, o selo/kanji atual continua como fallback.
+Foram gerados e conferidos visualmente retratos originais, individuais e sem interface/texto, para o protagonista e os 22 personagens clássicos já cadastrados. As imagens ficam no Managed Storage do projeto e são mapeadas por ID em `src/data/character-art.js`; aparecem nos cartões da coleção, formação e ficha do ninja. Nomes, IDs, atributos e técnicas continuam vindo de `src/data/characters.js` e `src/data/jutsus.js`. Caso uma imagem não carregue, o selo/kanji atual continua como fallback.
 
 ### Estrutura afetada
 
