@@ -71,3 +71,29 @@ test('ninja recém-invocado recebe célula única e continua na formação após
   positions = game.state.squad.map((memberId) => game.formationSlot(memberId));
   assert.equal(new Set(positions).size, positions.length);
 });
+
+test('mover Suporte da retaguarda para a frente recalcula o bônus de Guarda no snapshot e no save', () => {
+  game.start({ name: 'Teste Tático', gender: 'feminino', style: 'ninjutsu' });
+  game.setSquad(['hero', 'naruto', 'sakura', 'kakashi']);
+  assert.equal(game.placeSquadMember('sakura', 3).ok, true);
+  assert.equal(game.placeSquadMember('kakashi', 8).ok, true);
+
+  const rearUnits = game.squadUnits();
+  const rearBonus = rearUnits[0].teamBonus;
+  assert.equal(rearBonus.chakraPct, 0.03);
+  assert.equal(rearBonus.guardChakra, 6);
+  assert.ok(rearUnits.every((unit) => unit.teamBonus.guardChakra === rearBonus.guardChakra));
+
+  assert.equal(game.placeSquadMember('sakura', 5).ok, true);
+  const frontUnits = game.squadUnits();
+  const frontBonus = frontUnits[0].teamBonus;
+  assert.equal(frontBonus.chakraPct, rearBonus.chakraPct);
+  assert.equal(frontBonus.guardChakra, 4);
+  assert.equal(frontBonus.basicDamagePct, rearBonus.basicDamagePct);
+  assert.equal(frontBonus.techniqueDamagePct, rearBonus.techniqueDamagePct);
+  assert.ok(frontUnits.every((unit) => unit.teamBonus.guardChakra === frontBonus.guardChakra));
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  assert.equal(saved.formationSlots.sakura, 5);
+  assert.equal(new Set(game.state.squad.map((id) => game.formationSlot(id))).size, game.state.squad.length);
+});

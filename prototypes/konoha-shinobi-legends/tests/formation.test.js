@@ -69,3 +69,36 @@ test('bônus ajusta HP/chakra no snapshot sem alterar os dados-base', () => {
   assert.equal(unit.maxHp, 1000);
   assert.equal(enhanced.hp, enhanced.maxHp);
 });
+
+test('equipe tática soma sinergias por função e coluna, independentemente da linha ou ordem', () => {
+  const lineup = [
+    member('vanguard', 8, 'raro'),
+    member('striker', 0, 'epico'),
+    member('support', 3, 'raro'),
+    member('control', 2, 'lendario'),
+    member('striker', 4, 'comum', 3),
+  ];
+  const sameColumnsDifferentRows = [
+    member('vanguard', 5, 'raro'),
+    member('striker', 6, 'epico'),
+    member('support', 0, 'raro'),
+    member('control', 8, 'lendario'),
+    member('striker', 7, 'comum', 3),
+  ];
+  const quantize = (bonus) => Object.fromEntries(
+    Object.entries(bonus).map(([key, value]) => [key, Math.round(value * 1_000_000) / 1_000_000]),
+  );
+  const expected = {
+    hpPct: 0.024,
+    chakraPct: 0.03,
+    basicDamagePct: 0.104,
+    techniqueDamagePct: 0.08,
+    damageReduction: 0.056,
+    guardChakra: 6,
+  };
+
+  assert.equal(new Set(lineup.map((entry) => entry.position)).size, 5);
+  assert.deepEqual(quantize(formationBonuses(lineup)), expected);
+  assert.deepEqual(quantize(formationBonuses(sameColumnsDifferentRows)), expected);
+  assert.deepEqual(quantize(formationBonuses([...lineup].reverse())), expected);
+});

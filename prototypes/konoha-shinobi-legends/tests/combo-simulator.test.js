@@ -41,3 +41,33 @@ test('a cadeia não inclui o iniciador como perseguidor', () => {
   assert.ok(combo.sequence.every((step) => step.id !== 'naruto'));
   assert.equal(combo.starterHits, 2);
 });
+
+function withEqualSpeed(id) {
+  const character = getCharacter(id);
+  return {
+    ...character,
+    base: { ...character.base, spd: 100 },
+    growth: { ...character.growth, spd: 0 },
+  };
+}
+
+test('em empate de velocidade, pursuits priorizam frente, meio e retaguarda da grade 3x3', () => {
+  const tacticalTeam = [
+    { ...members[0], position: 7 },
+    { id: 'naruto', character: withEqualSpeed('naruto'), position: 0, level: 1 },
+    { id: 'sasuke', character: withEqualSpeed('sasuke'), position: 4, level: 1 },
+    { id: 'kakashi', character: withEqualSpeed('kakashi'), position: 2, level: 1 },
+    { id: 'lee', character: withEqualSpeed('lee'), position: 5, level: 1 },
+  ];
+  const combo = simulateCombo(tacticalTeam, 'hero', {
+    name: 'Disparo Tático',
+    hits: 1,
+    effect: { type: 'float' },
+  });
+
+  assert.deepEqual(combo.sequence.map((step) => step.id), ['kakashi', 'lee', 'sasuke', 'naruto']);
+  assert.deepEqual(combo.sequence.map((step) => step.triggerType), ['float', 'float', 'float', 'float']);
+  assert.ok(combo.sequence.every((step) => step.depth === 1));
+  assert.deepEqual(combo.sequence.map((step) => step.hits), [1, 1, 1, 2]);
+  assert.equal(combo.totalHits, 6);
+});
