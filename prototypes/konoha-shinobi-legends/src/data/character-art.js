@@ -20,8 +20,8 @@ export const CHARACTER_ART = Object.freeze({
   minato: '/manus-storage/async-images/OPfVdwGAv3ATe1maBOgnrJ/image-4.webp',
   neji: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-3.webp',
   choji: '/manus-storage/async-images/d9qbkr5DxnPbWYJIkfxEel/image-4.webp',
-  temari: '/manus-storage/async-images/Jjv00ArvH8KYQV6pYvoAZD/image-1.webp',
+  temari: '/manus-storage/async-images/L9gySWdSxsQYteCwytojmC/image-1.webp',
   kankuro: '/manus-storage/async-images/Jjv00ArvH8KYQV6pYvoAZD/image-2.webp',
-  zabuza: '/manus-storage/async-images/Jjv00ArvH8KYQV6pYvoAZD/image-3.webp',
+  zabuza: '/manus-storage/async-images/L9gySWdSxsQYteCwytojmC/image-2.webp',
   haku: '/manus-storage/async-images/Jjv00ArvH8KYQV6pYvoAZD/image-4.webp',
 });
