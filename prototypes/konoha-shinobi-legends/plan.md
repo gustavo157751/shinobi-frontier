@@ -42,7 +42,7 @@ Serão criados retratos originais, individuais e sem interface/texto, para o pro
 
 ### Estrutura afetada
 
-- `src/ui/screens/team.js`: compor as três regiões, presets, busca/filtros e controles existentes, mantendo a API do motor de formação.
+- `src/ui/screens/team.js`: compor as três regiões, busca/filtros e controles existentes, mantendo a API do motor de formação.
 - `src/ui/components.js` e `src/data/character-art.js`: apresentar retratos com fallback seguro e mapear IDs para assets sem misturar arte aos dados de balanceamento.
 - Assets de personagem no Managed Storage, referenciados por URLs `/manus-storage/async-images/...` preservadas no mapa de arte.
 - `src/styles/screens.css`: skin da formação, cartões com arte, detalhe e reflow responsivo; `src/styles/layout.css` permanece inalterado fora dos estilos globais existentes.

@@ -73,6 +73,7 @@ src/core/audio.js        efeitos sonoros sintetizados (WebAudio)
 src/ui/battle-vfx.js     projéteis, auras, impactos e animações de pursuit
 src/core/utils.js        funções auxiliares
 src/data/characters.js   elenco, atributos, elementos e perseguições
+src/data/character-art.js mapa de retratos por personagem
 src/data/jutsus.js       catálogo de técnicas
 src/data/statuses.js     efeitos de estado
 src/data/missions.js     campanha de Rank D a S
@@ -81,7 +82,7 @@ src/ui/shell.js          barra superior, menu, modais e toasts
 src/ui/components.js     fichas, avatares e barras reutilizáveis
 src/ui/screens/          criação, vila, missões, equipe, pergaminhos e batalha
 src/styles/              base, layout, telas e combate
-tests/                   testes de elenco/pursuit, formação, migração, convocação, combos, combate e VFX
+tests/                   testes de retratos, elenco/pursuit, formação, migração, convocação, combos, combate e VFX
 ```
 
 ## Integração com Shinobi Frontier
