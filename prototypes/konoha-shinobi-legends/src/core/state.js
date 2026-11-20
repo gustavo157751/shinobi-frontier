@@ -11,11 +11,12 @@
 
 import { HERO_TEMPLATES, ROSTER, getCharacter, statsFor, buildUnit } from '../data/characters.js';
 import { SCROLLS, DUPLICATE_REWARD, STARTER_NINJAS, STARTING_SCROLLS } from '../data/scrolls.js';
+import { EQUIPMENT_SLOTS, ITEM_CATALOG, STARTING_INVENTORY } from '../data/items.js';
 import { weightedPick, randInt, clamp, shuffle } from './utils.js';
 import { applyFormationBonus, formationBonuses } from './formation.js';
 
 const STORAGE_KEY = 'konoha-shinobi-legends.save.v1';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 3;
 
 /* ------------------------- CURVAS DE PROGRESSÃO ------------------------- */
 
@@ -88,6 +89,31 @@ function normalizeFormationSlots(candidate, squad) {
   return slots;
 }
 
+function normalizeInventory(candidate, fallback = {}) {
+  const source = candidate && typeof candidate === 'object' && !Array.isArray(candidate) ? candidate : {};
+  return Object.fromEntries(Object.keys(ITEM_CATALOG).map((id) => {
+    const count = Number(source[id] ?? fallback[id] ?? 0);
+    return [id, Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0];
+  }));
+}
+
+function normalizeEquipment(candidate, ninjas = []) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return {};
+  const owners = new Set(['hero', ...ninjas]);
+  const normalized = {};
+  for (const characterId of owners) {
+    const equipment = candidate[characterId];
+    if (!equipment || typeof equipment !== 'object' || Array.isArray(equipment)) continue;
+    const slots = {};
+    for (const slot of EQUIPMENT_SLOTS) {
+      const item = ITEM_CATALOG[equipment[slot.id]];
+      if (item?.category === 'equipment' && item.slot === slot.id) slots[slot.id] = item.id;
+    }
+    if (Object.keys(slots).length) normalized[characterId] = slots;
+  }
+  return normalized;
+}
+
 /* ----------------------------- ESTADO NOVO ----------------------------- */
 
 function newState({ name, gender, style }) {
@@ -117,6 +143,8 @@ function newState({ name, gender, style }) {
     squad: [...squad].sort((a, b) => formationSlots[a] - formationSlots[b]),
     formationSlots,
     scrolls: { ...STARTING_SCROLLS },
+    inventory: { ...STARTING_INVENTORY },
+    equipment: {},
     missions: {}, // { [missionId]: { wins: n, bestRound: n } }
     stats: { battles: 0, victories: 0, combos: 0, damage: 0 },
     settings: { sfx: true },
@@ -147,6 +175,8 @@ function migrate(raw) {
     player: { ...base.player, ...(raw.player ?? {}) },
     resources: { ...base.resources, ...(raw.resources ?? {}) },
     scrolls: { ...base.scrolls, ...(raw.scrolls ?? {}) },
+    inventory: normalizeInventory(raw.inventory, base.inventory),
+    equipment: normalizeEquipment(raw.equipment, ninjas),
     stats: { ...base.stats, ...(raw.stats ?? {}) },
     settings: { ...base.settings, ...(raw.settings ?? {}) },
     missions: raw.missions ?? {},
@@ -270,17 +300,124 @@ class GameStore {
     return ids.map((id, index) => {
       if (id === 'hero') {
         const hero = this.hero;
-        return applyFormationBonus(buildUnit(hero, {
+        const unit = applyFormationBonus(buildUnit(hero, {
           level: this.level,
           side: 'ally',
           slot: this.formationSlot(id) ?? index,
           isHero: true,
           displayName: this.state.player.name,
         }), bonus);
+        return this.applyEquipmentBonus(unit, id);
       }
       const character = getCharacter(id);
-      return applyFormationBonus(buildUnit(character, { level: this.level, side: 'ally', slot: this.formationSlot(id) ?? index }), bonus);
+      const unit = applyFormationBonus(buildUnit(character, { level: this.level, side: 'ally', slot: this.formationSlot(id) ?? index }), bonus);
+      return this.applyEquipmentBonus(unit, id);
     });
+  }
+
+  /** Status atual para a ficha; membros em campo incluem também a sinergia tática. */
+  characterStats(id) {
+    if (!this.state || !this.isOwned(id)) return null;
+    const active = this.squadUnits().find((unit) => unit.charId === id);
+    if (active) return active;
+    const character = id === 'hero'
+      ? { ...this.hero, id: 'hero', rarity: 'lendario' }
+      : getCharacter(id);
+    if (!character) return null;
+    const unit = buildUnit(character, {
+      level: this.level,
+      side: 'ally',
+      slot: this.formationSlot(id) ?? 4,
+      isHero: id === 'hero',
+      displayName: id === 'hero' ? this.state.player.name : undefined,
+    });
+    return this.applyEquipmentBonus(unit, id);
+  }
+
+  equipmentFor(id) {
+    return { ...(this.state?.equipment?.[id] ?? {}) };
+  }
+
+  applyEquipmentBonus(unit, characterId) {
+    const bonus = { hp: 0, atk: 0, def: 0, chakraMax: 0, crit: 0 };
+    for (const itemId of Object.values(this.state?.equipment?.[characterId] ?? {})) {
+      const itemBonus = ITEM_CATALOG[itemId]?.bonus;
+      if (!itemBonus) continue;
+      for (const key of Object.keys(bonus)) bonus[key] += Number(itemBonus[key]) || 0;
+    }
+    const maxHp = unit.maxHp + bonus.hp;
+    const maxChakra = unit.maxChakra + bonus.chakraMax;
+    return {
+      ...unit,
+      maxHp,
+      hp: maxHp,
+      maxChakra,
+      chakra: Math.round(maxChakra * 0.35),
+      atk: unit.atk + bonus.atk,
+      defense: unit.defense + bonus.def,
+      crit: Math.min(0.95, unit.crit + bonus.crit),
+      equipmentBonus: bonus,
+    };
+  }
+
+  equipItem(itemId, characterId) {
+    const item = ITEM_CATALOG[itemId];
+    if (!this.state || !item || item.category !== 'equipment') {
+      return { ok: false, reason: 'Esse item não pode ser equipado.' };
+    }
+    if (!this.isOwned(characterId)) return { ok: false, reason: 'Escolha um personagem recrutado.' };
+    const equipment = this.state.equipment[characterId] ?? {};
+    if (equipment[item.slot] === itemId) return { ok: true, action: 'unchanged', item };
+    if ((this.state.inventory[itemId] ?? 0) < 1) {
+      return { ok: false, reason: 'Esse item não está disponível na mochila.' };
+    }
+    const previousId = equipment[item.slot];
+    if (previousId && ITEM_CATALOG[previousId]) {
+      this.state.inventory[previousId] = (this.state.inventory[previousId] ?? 0) + 1;
+    }
+    this.state.inventory[itemId] -= 1;
+    this.state.equipment[characterId] = { ...equipment, [item.slot]: itemId };
+    this.commit();
+    return { ok: true, action: previousId ? 'replaced' : 'equipped', item, previous: ITEM_CATALOG[previousId] ?? null };
+  }
+
+  unequipItem(characterId, slotId) {
+    if (!this.state || !this.isOwned(characterId)) {
+      return { ok: false, reason: 'Escolha um personagem recrutado.' };
+    }
+    if (!EQUIPMENT_SLOTS.some((slot) => slot.id === slotId)) {
+      return { ok: false, reason: 'Esse espaço de equipamento não existe.' };
+    }
+    const equipment = this.state.equipment[characterId] ?? {};
+    const itemId = equipment[slotId];
+    if (!itemId || !ITEM_CATALOG[itemId]) return { ok: false, reason: 'Esse espaço já está vazio.' };
+    const updated = { ...equipment };
+    delete updated[slotId];
+    if (Object.keys(updated).length) this.state.equipment[characterId] = updated;
+    else delete this.state.equipment[characterId];
+    this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
+    this.commit();
+    return { ok: true, item: ITEM_CATALOG[itemId] };
+  }
+
+  useItem(itemId) {
+    const item = ITEM_CATALOG[itemId];
+    if (!this.state || !item || item.category !== 'consumable') {
+      return { ok: false, reason: 'Esse item não pode ser usado agora.' };
+    }
+    if ((this.state.inventory[itemId] ?? 0) < 1) {
+      return { ok: false, reason: 'Esse item não está disponível na mochila.' };
+    }
+    this.tick();
+    const { resource, amount } = item.effect;
+    const limit = resource === 'chakra' ? this.chakraMax : this.staminaMax;
+    const current = this.state.resources[resource];
+    const restored = Math.min(amount, Math.max(0, limit - current));
+    if (restored <= 0) return { ok: false, reason: `${resource === 'chakra' ? 'Chakra' : 'Stamina'} já está no limite.` };
+    this.state.resources[resource] += restored;
+    this.state.inventory[itemId] -= 1;
+    this.commit();
+    return { ok: true, resource, restored: Math.floor(restored), item };
   }
 
   squadCharacters() {

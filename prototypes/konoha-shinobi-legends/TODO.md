@@ -68,10 +68,19 @@
 - [x] Reflow para telas pequenas sem rolagem horizontal nem sobreposição de controles; a navegação inferior e os painéis continuam legíveis, operáveis por toque e teclado, e respeitam `prefers-reduced-motion`.
 - [x] Use cenário original ou assets já presentes; não copie a captura, logotipo, personagens desenhados ou arquivos oficiais do Naruto Online.
 
-
+## 11. Tela de equipes baseada na referência enviada
 - [x] Pesquisar a organização da tela de formação do Naruto Online e usar as imagens de referência anexadas para orientar a composição, sem embutir capturas ou copiar código, logos, ícones, sprites ou outros assets oficiais.
 - [x] Reorganizar a tela Equipe em regiões claras: equipe ativa e vagas à esquerda, tabuleiro tático 3×3 no centro e coleção de personagens com busca/filtros à direita; manter à vista os integrantes escalados e a ficha do personagem selecionado.
 - [x] Preservar o protagonista obrigatório, o limite atual de até quatro ninjas clássicos além dele, as regras de seleção, alocação, remoção e reposicionamento, os bônus de sinergia e o simulador de combo; a mudança visual não deve alterar o save existente nem o motor de combate.
 - [x] Criar e conferir visualmente retratos originais individuais para o protagonista e os 22 personagens clássicos do elenco, e exibi-los na coleção, na formação e na ficha; manter os selos/kanji atuais como fallback se uma imagem não carregar.
 - [x] Manter a tela responsiva, sem overflow horizontal, com controles operáveis por toque e teclado, foco visível e respeito a `prefers-reduced-motion`.
 - [x] Registrar as fontes consultadas e os limites da adaptação em `TEAM_SCREEN_RESEARCH_NOTES.md`.
+
+## 12. Aba Personagens, inventário, itens e status
+- [x] Acrescentar ao menu do jogo a entrada funcional **Personagens**, com abas internas **Personagens** e **Ferramentas**, sem substituir a tela **Equipe** ou sua formação tática 3×3.
+- [x] Inspirar a organização na referência enviada: lista da equipe/personagens à esquerda, ficha com retrato e status do ninja selecionado no centro, slots de equipamento próximos à ficha e inventário categorizado à direita; manter a marca e a arte próprias do projeto, sem incorporar a captura nem assets oficiais.
+- [x] Permitir selecionar o protagonista e ninjas recrutados, exibir nível, elemento, estilo, HP, ataque, defesa, velocidade, chakra e crítico com dados atuais, e apresentar itens equipados por slot.
+- [x] Mostrar equipamentos, consumíveis, materiais e pergaminhos com quantidades reais; filtros/categorias e busca alteram a grade, e selecionar um item revela seus detalhes e ação disponível.
+- [x] Equipar/desquipar transfere a unidade entre inventário e slot do personagem; bônus de equipamento aparecem no status e no snapshot de combate. Usar um consumível desconta uma unidade somente quando a ação pode restaurar recursos, sem exceder os limites atuais; materiais não mostram ações fictícias e o atalho de pergaminhos abre a tela de invocação existente.
+- [x] Salvar quantidades e equipamentos em `localStorage`; migrar saves anteriores sem perder personagem, recursos, pergaminhos, formação ou missões e manter o inventário válido após recarregar.
+- [x] Em desktop/tablet/mobile, adaptar as regiões sem rolagem horizontal; busca, abas, seleção e ações continuam legíveis e operáveis por mouse, toque e teclado, com foco visível e respeito a `prefers-reduced-motion`.

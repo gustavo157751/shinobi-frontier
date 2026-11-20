@@ -14,6 +14,7 @@ import { renderCreate } from './ui/screens/create.js';
 import { renderVillage } from './ui/screens/village.js';
 import { renderMissions } from './ui/screens/missions.js';
 import { renderTeam } from './ui/screens/team.js';
+import { renderCharacters } from './ui/screens/characters.js';
 import { renderScrolls } from './ui/screens/scrolls.js';
 import { renderBattle } from './ui/screens/battle.js';
 
@@ -26,8 +27,9 @@ const routes = {
     renderMissions(screen, {
       navigate,
       focusMission: params.missionId ? getMission(params.missionId) : null,
-    }),
+  }),
   equipe: (screen, params) => renderTeam(screen, { characterId: params.characterId ?? null }),
+  personagens: (screen) => renderCharacters(screen, { navigate }),
   pergaminhos: (screen) => renderScrolls(screen, { navigate }),
   batalha: (screen, params) => renderBattle(screen, { missionId: params.missionId, navigate }),
   criar: (screen) => renderCreate(screen, { onCreated: () => enterGame() }),

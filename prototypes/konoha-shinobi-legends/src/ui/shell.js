@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { id: 'vila', kanji: '里', label: 'Vila', hint: 'Painel do shinobi' },
   { id: 'missoes', kanji: '巻', label: 'Missões', hint: 'Rank D ao S' },
   { id: 'equipe', kanji: '組', label: 'Equipe', hint: 'Formação de combate' },
+  { id: 'personagens', kanji: '忍', label: 'Personagens', hint: 'Status e inventário' },
   { id: 'pergaminhos', kanji: '召', label: 'Pergaminhos', hint: 'Invocação e loja' },
 ];
 

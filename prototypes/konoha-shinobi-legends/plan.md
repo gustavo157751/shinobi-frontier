@@ -47,3 +47,21 @@ Foram gerados e conferidos visualmente retratos originais, individuais e sem int
 - Assets de personagem no Managed Storage, referenciados por URLs `/manus-storage/async-images/...` preservadas no mapa de arte.
 - `src/styles/screens.css`: skin da formação, cartões com arte, detalhe e reflow responsivo; `src/styles/layout.css` permanece inalterado fora dos estilos globais existentes.
 - `TEAM_SCREEN_RESEARCH_NOTES.md`: fontes consultadas, síntese da composição e distinção entre referência visual e reprodução de assets/código.
+
+
+## Extensão — aba Personagens e inventário
+
+Adicionar a rota interna **Personagens** à navegação do jogo e, dentro dela, abas **Personagens** e **Ferramentas**, mantendo a SPA vanilla/Vite e o save local. A captura enviada orienta a hierarquia: lista de membros à esquerda, retrato e atributos reais do selecionado ao centro, e inventário categorizado à direita; a identidade Konoha, os retratos já aprovados e os componentes existentes substituem a marca/arte proprietárias da referência.
+
+A tela permite selecionar protagonistas e ninjas já recrutados, consultar nível, elemento, estilo, HP, ataque, defesa, velocidade, chakra e crítico, e ver os equipamentos por slot. Um catálogo próprio de itens em `src/data/items.js` alimenta equipamentos, consumíveis, materiais e a contagem de pergaminhos existente. A quantidade de cada item e os equipamentos por personagem são persistidos em `localStorage`; a migração adiciona defaults a saves antigos sem apagar recursos, formação ou missão. Equipar/desquipar move a unidade entre mochila e slot e os atributos do equipamento são incluídos no snapshot real de combate. Consumíveis só decrementam a quantidade quando a restauração tem efeito e nunca ultrapassam os limites de recurso. Materiais permanecem informativos; pergaminhos encaminham à tela de invocação existente.
+
+### Estrutura afetada
+
+- `src/data/items.js`: catálogo comentado de itens, categorias, slots, efeitos, bônus e inventário inicial.
+- `src/core/state.js`: normalização/migração de mochila e equipamentos, ações de equipar/desquipar/usar e incorporação dos bônus ao snapshot de combate.
+- `src/ui/screens/characters.js`: seleção de integrantes, ficha de atributos, equipamentos, filtros, inventário, detalhes e navegação interna.
+- `src/main.js` e `src/ui/shell.js`: registro da rota e da entrada Personagens no menu principal.
+- `src/styles/screens.css`: painel azul-marinho/ciano inspirado pela captura, com a linguagem visual existente do jogo e reflow para desktop, tablet e mobile.
+- `tests/items.test.js`: regressão de migração, ações de inventário e estatísticas de equipamento.
+
+Não entram backend, dependências novas, arquivos de referência oficiais ou substituição das regras da formação 3×3; o manifesto do site continua declarando apenas a página SPA `/`.
